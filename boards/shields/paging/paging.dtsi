@@ -87,9 +87,8 @@
 	oled: ssd1306@3c {
         // 分辨率修改
         width = <128>;
-		height = <64>;
+		height = <32>;
 
-        // 0.91或0.96，使用以下
         compatible = "solomon,ssd1306fb";
         segment-offset = <0>;
         multiplex-ratio = <31>;
