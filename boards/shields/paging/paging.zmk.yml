@@ -1,0 +1,13 @@
+file_format: "1"
+id: paging
+name: paging
+type: shield
+url: 
+requires: [nrfmicro_13_52840]
+exposes: [i2c_oled]
+features:
+  - keys
+  - studio
+  - underglow
+  - backlight
+  - encoder
