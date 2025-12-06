@@ -11,10 +11,10 @@
         default_layer {
             display-name = "default";
             bindings = <
-                &trans          &trans
-                &trans  &mo 1   &trans 
-                &trans  &mo 2   &trans
-                &trans          &trans        
+                &rgb_ug RGB_TOG          &trans
+                &rgb_ug RGB_EFR  &mo 1   &trans 
+                &trans           &mo 2   &trans
+                &trans                   &trans        
             >; 
             sensor-bindings = <&inc_dec_kp PG_UP PG_DN>;
         };
