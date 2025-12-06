@@ -10,9 +10,9 @@
     status = "okay";
 };
 
-//&uart0 {
-    //status = "disabled";
-//};
+&uart0 {
+    status = "disabled";
+};
 
 &pinctrl {
     spi3_default: spi3_default {
