@@ -10,9 +10,9 @@
     status = "okay";
 };
 
-&uart0 {
-    status = "disabled";
-};
+//&uart0 {
+    //status = "disabled";
+//};
 
 &pinctrl {
     spi3_default: spi3_default {
@@ -39,14 +39,14 @@
         };
     };
 
-        i2c1_default: i2c1_default {
+    i2c0_default: i2c0_default {
         group1 {
             psels = <NRF_PSEL(TWIM_SDA, 0, 6)>,
                     <NRF_PSEL(TWIM_SCL, 0, 8)>;
         };
    };
 
-    i2c1_sleep: i2c1_sleep {
+    i2c0_sleep: i2c0_sleep {
         group1 {
             psels = <NRF_PSEL(TWIM_SDA, 0, 6)>,
                     <NRF_PSEL(TWIM_SCL, 0, 8)>;
@@ -66,7 +66,7 @@
         compatible = "worldsemi,ws2812-spi";
         reg = <0>;  // SPI 绑定必需
         spi-max-frequency = <4000000>;  // 4MHz 推荐
-        chain-length = <5>;  // LED 数量
+        chain-length = <3>;  // LED 数量
         spi-one-frame = <0x70>;  // WS2812 '1' 位帧
         spi-zero-frame = <0x40>;  // WS2812 '0' 位帧
         color-mapping = <LED_COLOR_ID_GREEN LED_COLOR_ID_RED LED_COLOR_ID_BLUE>;  // GRB 顺序，常见于 WS2812
@@ -81,11 +81,11 @@
 };
 
 //oled
-&i2c1 {
+&i2c0 {
 	status = "okay";
 	compatible = "nordic,nrf-twi";
-	pinctrl-0 = <&i2c1_default>;
-	pinctrl-1 = <&i2c1_sleep>;
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
 	pinctrl-names = "default", "sleep";
     
 	oled: ssd1306@3c {
