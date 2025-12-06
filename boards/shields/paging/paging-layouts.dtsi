@@ -1,12 +1,5 @@
 #include <physical_layouts.dtsi>
 
-&uart0 {
-    status = "okay";
-    compatible = "nordic,nrf-uarte";
-    current-speed = <115200>;
-     pinctrl-0 = <&uart0_default>;
-};
-
 / {
     physical_layout0: physical_layout_0 {
         compatible = "zmk,physical-layout";
