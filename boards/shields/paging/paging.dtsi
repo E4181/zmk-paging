@@ -10,6 +10,10 @@
     status = "okay";
 };
 
+&uart0 {
+    status = "disabled";
+};
+
 &pinctrl {
     spi3_default: spi3_default {
         group1 {
@@ -93,7 +97,7 @@
         segment-offset = <0>;
         multiplex-ratio = <31>;
         com-sequential; //1.30注销本行
-        
+
 		reg = <0x3c>;
 		label = "DISPLAY";
 		page-offset = <0>;
