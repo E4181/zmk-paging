@@ -41,14 +41,14 @@
 
     i2c1_default: i2c1_default {
         group1 {
-            psels = <NRF_PSEL(TWIM_SDA, 0, 9)>,
+            psels = <NRF_PSEL(TWIM_SDA, 0, 6)>,
                     <NRF_PSEL(TWIM_SCL, 0, 8)>;
         };
    };
 
     i2c1_sleep: i2c1_sleep {
         group1 {
-            psels = <NRF_PSEL(TWIM_SDA, 0, 9)>,
+            psels = <NRF_PSEL(TWIM_SDA, 0, 6)>,
                     <NRF_PSEL(TWIM_SCL, 0, 8)>;
             low-power-enable;
         };
@@ -104,7 +104,7 @@
 		display-offset = <0>;
 		segment-remap;
 		com-invdir;
-        inversion-on;   // 翻转颜色
+        //inversion-on;// 翻转颜色
 		prechargep = <0x22>;
 	};
 };
