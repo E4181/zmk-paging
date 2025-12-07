@@ -90,9 +90,6 @@
 	pinctrl-1 = <&i2c1_sleep>;
 	pinctrl-names = "default", "sleep";
     
-    sda-pull-up;    // 再次确认启用上拉
-    scl-pull-up;    // 再次确认启用上拉
-    
 	oled: ssd1306@3c {
         // 分辨率修改
         width = <128>;
