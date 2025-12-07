@@ -41,14 +41,14 @@
 
     i2c1_default: i2c1_default {
         group1 {
-            psels = <NRF_PSEL(TWIM_SDA, 0, 1)>,
+            psels = <NRF_PSEL(TWIM_SDA, 0, 10)>,
                     <NRF_PSEL(TWIM_SCL, 0, 8)>;
         };
    };
 
     i2c1_sleep: i2c1_sleep {
         group1 {
-            psels = <NRF_PSEL(TWIM_SDA, 0, 1)>,
+            psels = <NRF_PSEL(TWIM_SDA, 0, 10)>,
                     <NRF_PSEL(TWIM_SCL, 0, 8)>;
             low-power-enable;
         };
