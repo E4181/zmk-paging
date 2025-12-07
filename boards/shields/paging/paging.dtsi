@@ -100,7 +100,7 @@
         multiplex-ratio = <31>;
         com-sequential; //1.30注销本行
 
-		reg = <0x3c>;
+		reg = <0x3d>;
 		label = "DISPLAY";
 		page-offset = <0>;
 		display-offset = <0>;
