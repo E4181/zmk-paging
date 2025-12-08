@@ -104,7 +104,7 @@
 		display-offset = <0>;
 		segment-remap;
 		com-invdir;
-        //inversion-on;// 翻转颜色
+        inversion-on;// 翻转颜色
 		prechargep = <0x22>;
 	};
 };
