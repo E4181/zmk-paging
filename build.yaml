@@ -1,6 +1,6 @@
 include:
    - board: nrfmicro_13
-     shield: paging nice_oled
+     shield: paging
      snippet: studio-rpc-usb-uart
    - board: nrfmicro_13
      shield: settings_reset
