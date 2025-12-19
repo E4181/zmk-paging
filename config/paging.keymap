@@ -27,7 +27,7 @@
                 &trans           &trans  &trans
                 &trans                   &trans  
             >;
-            sensor-bindings = <&inc_dec_kp C_VOL_DN C_VOL_UP>;
+            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
 
         tri_layer {
@@ -38,7 +38,7 @@
                 &trans  &trans  &trans
                 &trans          &trans 
             >;
-            sensor-bindings = <&inc_dec_kp C_VOL_DN C_VOL_UP>;
+            sensor-bindings = <&inc_dec_kp LEFT_ARROW RIGHT_ARROW>;
         };
     };
 };
