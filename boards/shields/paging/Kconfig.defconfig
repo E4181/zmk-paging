@@ -41,3 +41,86 @@ choice LV_COLOR_DEPTH
 endchoice
 
 endif # LVGL
+
+
+# 蓝牙状态LED指示配置
+menuconfig CUSTOM_BLUETOOTH_LED
+    bool "Bluetooth LED Indicator"
+    default y
+    help
+      Enable LED indicator for Bluetooth connection status.
+      LED will blink when Bluetooth is disconnected and turn off when connected.
+
+if CUSTOM_BLUETOOTH_LED
+
+config BLUETOOTH_LED_BLINK_INTERVAL
+    int "Blink interval for disconnected state (ms)"
+    default 1000
+    range 250 5000
+    help
+      LED blink interval in milliseconds when Bluetooth is disconnected.
+
+endif # CUSTOM_BLUETOOTH_LED
+
+# 系统状态协调器配置
+menuconfig CUSTOM_STATE_COORDINATOR
+    bool "System State Coordinator"
+    default y
+    help
+      Coordinate multiple system states (charging, Bluetooth) and control LED accordingly.
+
+if CUSTOM_STATE_COORDINATOR
+
+config CHARGING_HAS_PRIORITY
+    bool "Charging state has priority over Bluetooth"
+    default y
+    help
+      When enabled, charging status will override Bluetooth status for LED control.
+
+endif # CUSTOM_STATE_COORDINATOR
+
+# LED控制器配置
+menuconfig CUSTOM_LED_CONTROLLER
+    bool "LED Controller"
+    default y
+    help
+      Unified LED controller for system status indications.
+
+if CUSTOM_LED_CONTROLLER
+
+config LED_CONTROLLER_STACK_SIZE
+    int "LED controller stack size (bytes)"
+    default 1024
+    range 512 4096
+    help
+      Stack size for LED controller thread.
+
+endif # CUSTOM_LED_CONTROLLER
+
+# 充电监控器配置（已有，添加配置）
+menuconfig CUSTOM_CHARGING_MONITOR
+    bool "Charging Monitor"
+    default y
+    select GPIO
+    help
+      Monitor battery charging status via CHRG pin.
+
+if CUSTOM_CHARGING_MONITOR
+
+config CHARGING_GPIO_PIN
+    int "CHRG pin number"
+    default 9
+    help
+      GPIO pin number for charging status (P1.09 on nRF52840).
+
+config CHARGING_POLL_INTERVAL_CHARGING_MS
+    int "Poll interval when charging (ms)"
+    default 2000
+    range 1000 10000
+
+config CHARGING_POLL_INTERVAL_FULL_MS
+    int "Poll interval when fully charged (ms)"
+    default 10000
+    range 5000 30000
+
+endif # CUSTOM_CHARGING_MONITOR
