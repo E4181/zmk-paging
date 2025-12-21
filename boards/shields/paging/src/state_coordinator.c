@@ -47,8 +47,6 @@ static struct state_coordinator_data *get_data(void)
 // 计算系统状态（根据优先级）
 static void calculate_system_state(struct state_coordinator_data *data)
 {
-    system_led_state_t old_state = data->system_state;
-    
     // 优先级逻辑：充电状态 > 蓝牙状态
     if (data->charging_has_priority) {
         switch (data->charging_state) {
