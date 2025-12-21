@@ -49,7 +49,6 @@ static void set_gpio_level(bool level)
     struct led_controller_data *data = get_data();
     
     if (!data->gpio_dev || !device_is_ready(data->gpio_dev)) {
-        LOG_ERR("GPIO device not ready");
         return;
     }
     
@@ -59,13 +58,14 @@ static void set_gpio_level(bool level)
     }
 }
 
-// 闪烁工作函数
+// 闪烁工作函数（修复版）
 static void blink_work_handler(struct k_work *work)
 {
     struct k_work_delayable *dwork = k_work_delayable_from_work(work);
     struct led_controller_data *data = CONTAINER_OF(dwork, struct led_controller_data, blink_work);
     
     if (!data->blinking_active) {
+        LOG_DBG("Blinking not active, stopping");
         return;
     }
     
@@ -75,13 +75,16 @@ static void blink_work_handler(struct k_work *work)
     
     if (data->led_on) {
         set_gpio_level(true);
+        LOG_DBG("Blink %u: LED ON", data->blink_counter);
     } else {
         set_gpio_level(false);
+        LOG_DBG("Blink %u: LED OFF", data->blink_counter);
     }
     
-    // 重新调度下一次闪烁
+    // 关键修复：重新调度下一次闪烁
+    // 必须在这里重新调度，而不是在start_blinking中只调度一次
     if (data->blinking_active) {
-        k_work_reschedule(dwork, K_MSEC(data->blink_interval_ms));
+        k_work_reschedule(dwork, K_MSEC(data->blink_interval_ms / 2));
     }
 }
 
@@ -89,6 +92,7 @@ static void blink_work_handler(struct k_work *work)
 static void stop_blinking(struct led_controller_data *data)
 {
     if (data->blinking_active) {
+        LOG_DBG("Stopping blinking");
         k_work_cancel_delayable(&data->blink_work);
         data->blinking_active = false;
         data->blink_counter = 0;
@@ -96,10 +100,11 @@ static void stop_blinking(struct led_controller_data *data)
     }
 }
 
-// 开始闪烁
+// 开始闪烁（修复版）
 static void start_blinking(struct led_controller_data *data, uint32_t interval_ms)
 {
     if (interval_ms == 0) {
+        LOG_ERR("Invalid blink interval: 0ms");
         return;
     }
     
@@ -113,8 +118,9 @@ static void start_blinking(struct led_controller_data *data, uint32_t interval_m
     // 立即开始第一次亮起
     data->led_on = true;
     set_gpio_level(true);
+    LOG_INF("Starting blink with interval %dms", interval_ms);
     
-    // 调度第一次熄灭（间隔为半周期）
+    // 关键修复：调度第一次熄灭（半周期后）
     k_work_reschedule(&data->blink_work, K_MSEC(interval_ms / 2));
 }
 
@@ -168,7 +174,7 @@ int led_controller_init(void)
     return 0;
 }
 
-// 设置LED状态
+// 设置LED状态（修复版）
 void led_controller_set_state(system_led_state_t state, led_mode_t mode, uint32_t interval_ms)
 {
     struct led_controller_data *data = get_data();
@@ -178,10 +184,28 @@ void led_controller_set_state(system_led_state_t state, led_mode_t mode, uint32_
         return;
     }
     
+    // 记录旧状态用于日志
+    const char *old_state_str = 
+        (data->current_state == SYSTEM_LED_STATE_CHARGING) ? "CHARGING" :
+        (data->current_state == SYSTEM_LED_STATE_FULL_CHARGE) ? "FULL_CHARGE" :
+        (data->current_state == SYSTEM_LED_STATE_BT_CONNECTED) ? "BT_CONNECTED" :
+        (data->current_state == SYSTEM_LED_STATE_BT_DISCONNECTED) ? "BT_DISCONNECTED" :
+        (data->current_state == SYSTEM_LED_STATE_ERROR) ? "ERROR" : "OFF";
+    
+    const char *new_state_str = 
+        (state == SYSTEM_LED_STATE_CHARGING) ? "CHARGING" :
+        (state == SYSTEM_LED_STATE_FULL_CHARGE) ? "FULL_CHARGE" :
+        (state == SYSTEM_LED_STATE_BT_CONNECTED) ? "BT_CONNECTED" :
+        (state == SYSTEM_LED_STATE_BT_DISCONNECTED) ? "BT_DISCONNECTED" :
+        (state == SYSTEM_LED_STATE_ERROR) ? "ERROR" : "OFF";
+    
     // 状态没有变化，直接返回
     if (state == data->current_state && mode == data->current_mode) {
         return;
     }
+    
+    LOG_INF("LED state changing: %s -> %s (mode: %d, interval: %dms)",
+           old_state_str, new_state_str, mode, interval_ms);
     
     // 更新状态
     data->current_state = state;

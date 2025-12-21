@@ -135,6 +135,7 @@ static void on_state_changed(struct state_coordinator_data *data)
 }
 
 // 初始化状态协调器
+// 在state_coordinator.c的init函数中，修改蓝牙初始状态
 int state_coordinator_init(void)
 {
     struct state_coordinator_data *data = get_data();
@@ -148,8 +149,9 @@ int state_coordinator_init(void)
     
     k_work_init(&data->callback_work, callback_work_handler);
     
+    // 修改：初始蓝牙状态为DISCONNECTED，而不是CONNECTED
     data->charging_state = CHARGING_STATE_ERROR;
-    data->bluetooth_state = BLUETOOTH_STATE_DISCONNECTED;
+    data->bluetooth_state = BLUETOOTH_STATE_DISCONNECTED;  // 修正为未连接
     data->last_state_change_time = k_uptime_get();
     
     calculate_system_state(data);
