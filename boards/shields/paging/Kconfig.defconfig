@@ -43,19 +43,54 @@ endchoice
 endif # LVGL
 
 
+# ZMK Custom Configuration
+
+menu "ZMK Custom Features"
+
+# 自定义LED控制配置
+menuconfig CUSTOM_LED_CONTROL
+    bool "Custom LED Control"
+    default y
+    select GPIO
+    help
+      Enable custom LED control via GPIO instead of ZMK backlight API.
+
+if CUSTOM_LED_CONTROL
+
+config STATUS_LED_GPIO_PORT
+    int "Status LED GPIO port"
+    default 0
+    range 0 1
+    help
+      GPIO port for status LED (0 for GPIO0, 1 for GPIO1 on nRF52840).
+
+config STATUS_LED_GPIO_PIN
+    int "Status LED GPIO pin number"
+    default 26
+    range 0 31
+    help
+      GPIO pin number for status LED (P0.26 on nRF52840).
+
+config STATUS_LED_ACTIVE_HIGH
+    bool "Status LED is active high"
+    default y
+    help
+      Set to y if LED turns on with high level, n if LED turns on with low level.
+
+endif # CUSTOM_LED_CONTROL
+
 # 蓝牙状态LED指示配置
 menuconfig CUSTOM_BLUETOOTH_LED
     bool "Bluetooth LED Indicator"
     default y
     help
       Enable LED indicator for Bluetooth connection status.
-      LED will blink when Bluetooth is disconnected and turn off when connected.
 
 if CUSTOM_BLUETOOTH_LED
 
 config BLUETOOTH_LED_BLINK_INTERVAL
     int "Blink interval for disconnected state (ms)"
-    default 1000
+    default 500
     range 250 5000
     help
       LED blink interval in milliseconds when Bluetooth is disconnected.
@@ -97,7 +132,7 @@ config LED_CONTROLLER_STACK_SIZE
 
 endif # CUSTOM_LED_CONTROLLER
 
-# 充电监控器配置（已有，添加配置）
+# 充电监控器配置
 menuconfig CUSTOM_CHARGING_MONITOR
     bool "Charging Monitor"
     default y
@@ -124,3 +159,5 @@ config CHARGING_POLL_INTERVAL_FULL_MS
     range 5000 30000
 
 endif # CUSTOM_CHARGING_MONITOR
+
+endmenu

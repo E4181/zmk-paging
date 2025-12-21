@@ -1,8 +1,27 @@
 #pragma once
 
+// 自动包含生成的 autoconf.h
+#include <autoconf.h>
+
+// 自定义LED控制配置
+#ifdef CONFIG_CUSTOM_LED_CONTROL
+#define ENABLE_CUSTOM_LED_CONTROL 1
+#ifndef CONFIG_STATUS_LED_GPIO_PORT
+#define CONFIG_STATUS_LED_GPIO_PORT 0
+#endif
+#ifndef CONFIG_STATUS_LED_GPIO_PIN
+#define CONFIG_STATUS_LED_GPIO_PIN 26
+#endif
+#ifndef CONFIG_STATUS_LED_ACTIVE_HIGH
+#define CONFIG_STATUS_LED_ACTIVE_HIGH 1
+#endif
+#else
+#define ENABLE_CUSTOM_LED_CONTROL 0
+#endif
+
 // 蓝牙LED配置
 #ifndef CONFIG_BLUETOOTH_LED_BLINK_INTERVAL
-#define CONFIG_BLUETOOTH_LED_BLINK_INTERVAL 1000
+#define CONFIG_BLUETOOTH_LED_BLINK_INTERVAL 500
 #endif
 
 // 状态协调器配置

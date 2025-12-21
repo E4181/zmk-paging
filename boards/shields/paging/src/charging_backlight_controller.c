@@ -4,7 +4,6 @@
 
 LOG_MODULE_REGISTER(charging_backlight, CONFIG_ZMK_LOG_LEVEL);
 
-#include <zmk/backlight.h>
 #include "config.h"
 
 // 条件编译包含
@@ -35,9 +34,13 @@ static void on_charging_state_changed(charging_state_t new_state)
     #else
     // 如果没有状态协调器，直接处理
     if (new_state == CHARGING_STATE_CHARGING) {
-        zmk_backlight_on();
+        #if ENABLE_LED_CONTROLLER
+        led_controller_on();
+        #endif
     } else if (new_state == CHARGING_STATE_FULL) {
-        zmk_backlight_off();
+        #if ENABLE_LED_CONTROLLER
+        led_controller_off();
+        #endif
     }
     #endif
 }
@@ -68,7 +71,7 @@ static void delayed_init_work_handler(struct k_work *work)
     
     int ret;
     
-    LOG_INF("Initializing enhanced backlight controller");
+    LOG_INF("Initializing custom LED controller system");
     
     // 初始化LED控制器
     #if ENABLE_LED_CONTROLLER
@@ -122,7 +125,7 @@ static void delayed_init_work_handler(struct k_work *work)
     }
     #endif
     
-    LOG_INF("Backlight controller initialization completed");
+    LOG_INF("Custom LED controller system initialization completed");
 }
 
 // 初始化背光控制器
@@ -132,7 +135,7 @@ static int charging_backlight_controller_init(void)
     k_work_init_delayable(&init_work, delayed_init_work_handler);
     k_work_reschedule(&init_work, K_SECONDS(3));
     
-    LOG_INF("Backlight controller scheduled for initialization");
+    LOG_INF("Custom LED controller system scheduled for initialization");
     return 0;
 }
 
