@@ -2,6 +2,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/hci.h>
 
 LOG_MODULE_REGISTER(bluetooth_monitor, CONFIG_ZMK_LOG_LEVEL);
 
@@ -35,7 +36,32 @@ static struct bluetooth_monitor_data *get_data(void)
     return &data;
 }
 
-// 蓝牙连接状态回调函数
+// 检查蓝牙连接状态的简单方法
+static bluetooth_state_t check_bluetooth_connection(void)
+{
+    struct bluetooth_monitor_data *data = get_data();
+    
+    // 方法1：检查活跃连接数
+    if (data->connection_count > 0) {
+        return BLUETOOTH_STATE_CONNECTED;
+    }
+    
+    // 方法2：尝试获取活跃连接
+    // 注意：这个方法在某些配置下可能不可用
+    #if defined(CONFIG_BT_CONN)
+    struct bt_conn *conn = bt_conn_lookup_state_le(BT_ID_DEFAULT, NULL, BT_CONN_STATE_CONNECTED);
+    if (conn) {
+        bt_conn_unref(conn);
+        return BLUETOOTH_STATE_CONNECTED;
+    }
+    #endif
+    
+    return BLUETOOTH_STATE_DISCONNECTED;
+}
+
+// 蓝牙连接状态变化回调（如果有可用的话）
+// 注意：这些回调可能不会被调用，取决于蓝牙栈的配置
+#if defined(CONFIG_BT_CONN)
 static void bt_connected(struct bt_conn *conn, uint8_t err)
 {
     struct bluetooth_monitor_data *data = get_data();
@@ -47,6 +73,10 @@ static void bt_connected(struct bt_conn *conn, uint8_t err)
     
     data->connection_count++;
     LOG_INF("Bluetooth connected (count: %u)", data->connection_count);
+    
+    // 触发状态检查
+    k_work_cancel_delayable(&data->status_check_work);
+    k_work_reschedule(&data->status_check_work, K_NO_WAIT);
 }
 
 static void bt_disconnected(struct bt_conn *conn, uint8_t reason)
@@ -58,6 +88,10 @@ static void bt_disconnected(struct bt_conn *conn, uint8_t reason)
     if (data->connection_count > 0) {
         data->connection_count--;
     }
+    
+    // 触发状态检查
+    k_work_cancel_delayable(&data->status_check_work);
+    k_work_reschedule(&data->status_check_work, K_NO_WAIT);
 }
 
 // 蓝牙连接回调结构
@@ -65,36 +99,7 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected = bt_connected,
     .disconnected = bt_disconnected,
 };
-
-// 检查蓝牙连接状态
-static bluetooth_state_t check_bluetooth_connection(void)
-{
-    struct bluetooth_monitor_data *data = get_data();
-    
-    // 方法1：检查活跃连接数
-    if (data->connection_count > 0) {
-        return BLUETOOTH_STATE_CONNECTED;
-    }
-    
-    // 方法2：使用蓝牙API检查
-    #ifdef CONFIG_BT_CENTRAL
-    // 作为中心设备检查连接
-    struct bt_conn *conn = bt_conn_lookup_state_le(BT_ID_DEFAULT, NULL, BT_CONN_STATE_CONNECTED);
-    if (conn) {
-        bt_conn_unref(conn);
-        return BLUETOOTH_STATE_CONNECTED;
-    }
-    #endif
-    
-    #ifdef CONFIG_BT_PERIPHERAL
-    // 作为外设检查广播状态
-    if (bt_le_is_advertising()) {
-        return BLUETOOTH_STATE_DISCONNECTED; // 正在广播，但未连接
-    }
-    #endif
-    
-    return BLUETOOTH_STATE_DISCONNECTED;
-}
+#endif
 
 // 异步回调工作函数
 static void callback_work_handler(struct k_work *work)
@@ -126,8 +131,8 @@ static void status_check_work_handler(struct k_work *work)
         data->current_state = new_state;
         data->last_state_change_time = k_uptime_get();
         
-        LOG_INF("Bluetooth state changed: %s -> %s (connections: %u)", 
-                old_state_str, new_state_str, data->connection_count);
+        LOG_INF("Bluetooth state changed: %s -> %s", 
+                old_state_str, new_state_str);
         
         k_work_submit(&data->callback_work);
     }
@@ -159,7 +164,7 @@ int bluetooth_monitor_init(void)
     LOG_INF("Initial bluetooth state: %s", bluetooth_monitor_get_state_str());
     
     // 启动状态检查
-    k_work_reschedule(&data->status_check_work, K_MSEC(BLUETOOTH_CHECK_INTERVAL_MS));
+    k_work_reschedule(&data->status_check_work, K_MSEC(100)); // 100ms后开始第一次检查
     
     data->initialized = true;
     LOG_INF("Bluetooth monitor initialized successfully");
