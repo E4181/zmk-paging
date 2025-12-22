@@ -46,22 +46,55 @@
             display-name = "extraone";
             bindings = <
                 &kp C_MUTE      &rgb_ug RGB_HUI
-                &trans  &to 0   &rgb_ug RGB_HUD
-                &trans  &trans  &rgb_ug RGB_SAI
+                &kp C_AC_STOP  &to 0   &rgb_ug RGB_HUD
+                &kp K_STOP  &trans  &rgb_ug RGB_SAI
                 &trans          &rgb_ug RGB_SAD  
             >;
             sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
 
-        extratow_layer {
+        extratwo_layer {
             display-name = "extratwo";
             bindings = <
-                &mkp LCLK       &mmv MOVE_UP
-                &trans  &trans  &mmv MOVE_DOWN 
-                &trans  &to 0   &mmv MOVE_LEFT
-                &trans          &mmv MOVE_RIGHT 
+                &mkp LCLK              &mmv MOVE_UP
+                &kp C_AC_HOME  &trans  &mmv MOVE_DOWN 
+                &kp C_AC_BACK  &to 0   &mmv MOVE_LEFT
+                &kp C_AC_FORWARD       &mmv MOVE_RIGHT 
             >;
-            sensor-bindings = <&inc_dec_kp K_FORWARD K_BACK>;
+            sensor-bindings = <&inc_dec_kp K_SCROLL_UP K_SCROLL_DOWN>;
+        };
+
+        extrathree_layer {
+            display-name = "extrathree";
+            bindings = <
+                &trans          &trans
+                &trans  &trans  &trans 
+                &trans  &trans  &trans
+                &trans          &trans
+            >;
+            sensor-bindings = <&inc_dec_kp C_AC_SCROLL_UP C_AC_SCROLL_DOWN>;
+        };
+
+        extrafour_layer {
+            display-name = "extrafour";
+            bindings = <
+                &trans          &trans
+                &trans  &trans  &trans 
+                &trans  &trans  &trans
+                &trans          &trans
+            >;
+            sensor-bindings = <&inc_dec_kp PG_UP PG_DN>;
+        };
+
+        extrafive_layer {
+            display-name = "extrafive";
+            bindings = <
+                &trans          &trans
+                &trans  &trans  &trans 
+                &trans  &trans  &trans
+                &trans          &trans
+            >;
+            sensor-bindings = <&inc_dec_kp PG_UP PG_DN>;
         };
     };
 };
