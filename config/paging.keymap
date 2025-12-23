@@ -39,7 +39,7 @@
                 &mkp LCLK              &mmv MOVE_UP
                 &kp C_AC_HOME  &to 1   &mmv MOVE_DOWN  
                 &kp C_AC_BACK  &trans  &mmv MOVE_LEFT
-                &kp K_STOP             &mmv MOVE_RIGHT        
+                &kp C_AC_STOP          &mmv MOVE_RIGHT        
             >; 
             sensor-bindings = <&scroll_encoder>;
         };
@@ -47,10 +47,10 @@
         fn_layer {
             display-name = "up&down";       
             bindings = <
-                &mkp LCLK              &mmv MOVE_UP
-                &kp C_AC_HOME  &to 2   &mmv MOVE_DOWN  
-                &kp C_AC_BACK  &trans  &mmv MOVE_LEFT
-                &kp K_STOP             &mmv MOVE_RIGHT      
+                &mkp LCLK           &mmv MOVE_UP
+                &to 0       &to 2   &mmv MOVE_DOWN  
+                &kp C_NEXT  &trans  &mmv MOVE_LEFT
+                &kp C_PREV          &mmv MOVE_RIGHT      
             >;
             sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
@@ -58,7 +58,7 @@
         tri_layer {
             display-name = "volume";
             bindings = <
-                &trans                 &trans
+                &kp C_MUTE             &trans
                 &to 0          &to 3   &trans  
                 &kp C_AC_BACK  &trans  &trans
                 &kp C_AC_FORWARD       &trans
