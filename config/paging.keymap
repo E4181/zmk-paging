@@ -63,7 +63,7 @@
                 &kp C_AC_BACK  &trans  &trans
                 &kp C_AC_FORWARD       &trans
             >;
-            sensor-bindings = <&inc_dec_kp K_VOL_UP K_VOL_DN>;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
 
         extraone_layer {
