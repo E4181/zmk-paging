@@ -6,6 +6,30 @@
 #include <dt-bindings/zmk/pointing.h>
 
 / {
+    rgb_bri_encoder: rgb_bri_encoder {
+        compatible = "zmk,behavior-sensor-rotate";
+        #sensor-binding-cells = <0>;
+        bindings = <&rgb_ug RGB_BRI>, <&rgb_ug RGB_BRD>;
+    };
+    rgb_hue_encoder: rgb_hue_encoder {
+        compatible = "zmk,behavior-sensor-rotate";
+        #sensor-binding-cells = <0>;
+        bindings = <&rgb_ug RGB_HUI>, <&rgb_ug RGB_HUD>;
+    };
+    rgb_sat_encoder: rgb_sat_encoder {
+        compatible = "zmk,behavior-sensor-rotate";
+        #sensor-binding-cells = <0>;
+        bindings = <&rgb_ug RGB_SAI>, <&rgb_ug RGB_SAD>;
+    };
+
+    scroll_encoder: scroll_encoder {
+        compatible = "zmk,behavior-sensor-rotate";
+        #sensor-binding-cells = <0>;
+        bindings = <&msc SCRL_DOWN>, <&msc SCRL_UP>;
+
+        tap-ms = <30>;
+    };
+    
     keymap0: keymap {
         compatible = "zmk,keymap";
 
@@ -17,7 +41,7 @@
                 &kp C_AC_BACK  &trans  &mmv MOVE_LEFT
                 &kp K_STOP             &mmv MOVE_RIGHT        
             >; 
-            sensor-bindings = <&inc_dec_kp PG_UP PG_DN>;
+            sensor-bindings = <&scroll_encoder>;
         };
 
         fn_layer {
@@ -50,7 +74,7 @@
                 &rgb_ug RGB_BRI  &trans  &rgb_ug RGB_SAI
                 &rgb_ug RGB_BRD          &rgb_ug RGB_SAD  
             >;
-            sensor-bindings = <&inc_dec_rgb_ug RGB_HUI RGB_HUD>;
+            sensor-bindings = <&rgb_hue_encoder>;
         };
 
         extratwo_layer {
