@@ -30,6 +30,18 @@
         tap-ms = <30>;
     };
 
+    tiktok_encoder: tiktok_encoder {
+        compatible = "zmk,behavior-sensor-rotate";
+        #sensor-binding-cells = <0>;
+        bindings = <&kp C_NEXT>, <&kp C_PREV>;
+    };
+
+    redbook_encoder: redbook_encoder {
+        compatible = "zmk,behavior-sensor-rotate";
+        #sensor-binding-cells = <0>;
+        bindings = <&kp UP_ARROW>, <&kp DOWN_ARROW>;
+    };
+
     
     keymap0: keymap {
         compatible = "zmk,keymap";
@@ -53,7 +65,7 @@
                 &kp UP_ARROW   &trans  &mmv MOVE_LEFT
                 &kp DOWN_ARROW         &mmv MOVE_RIGHT      
             >;
-            sensor-bindings = <&inc_dec_kp C_NEXT C_PREV>; 
+            sensor-bindings = <&tiktok_encoder>; 
         };
         mediatwo_layer {
             display-name = "up&down_redbook";       
@@ -63,7 +75,7 @@
                 &kp C_NEXT  &trans  &mmv MOVE_LEFT
                 &kp C_PREV          &mmv MOVE_RIGHT      
             >;
-            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
+            sensor-bindings = <&redbook_encoder>;
         };
 
         tri_layer {
