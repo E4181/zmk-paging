@@ -4,14 +4,25 @@ layers:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - AC HOME
-  - {t: up&down, h: toggle}
+  - {t: up&down_tiktok, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
   - {t: ▽, type: trans}
   - '&mmv MOVE_LEFT'
   - AC STOP
   - '&mmv MOVE_RIGHT'
-  up&down:
+  up&down_tiktok:
+  - '&mkp LCLK'
+  - '&mmv MOVE_UP'
+  - {t: scroll, h: toggle}
+  - {t: up&down_redbook, h: toggle}
+  - '&mmv MOVE_DOWN'
+  - UP ARROW
+  - {t: ▽, type: trans}
+  - '&mmv MOVE_LEFT'
+  - DOWN ARROW
+  - '&mmv MOVE_RIGHT'
+  up&down_redbook:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: scroll, h: toggle}
@@ -26,13 +37,24 @@ layers:
   - MUTE
   - {t: ▽, type: trans}
   - {t: scroll, h: toggle}
-  - {t: rgbmode, h: toggle}
+  - {t: left&right, h: toggle}
   - {t: ▽, type: trans}
   - AC BACK
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - AC FORWARD
   - {t: ▽, type: trans}
+  left&right:
+  - '&mkp LCLK'
+  - '&mmv MOVE_UP'
+  - {t: scroll, h: toggle}
+  - {t: rgbmode, h: toggle}
+  - '&mmv MOVE_DOWN'
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - '&mmv MOVE_LEFT'
+  - {t: ▽, type: trans}
+  - '&mmv MOVE_RIGHT'
   rgbmode:
   - RGB TOG
   - RGB EFR
@@ -48,7 +70,7 @@ layers:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: scroll, h: toggle}
-  - {t: bluetooth, h: toggle}
+  - '&to 6 7'
   - '&mmv MOVE_DOWN'
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
@@ -59,22 +81,11 @@ layers:
   - {t: ▽, type: trans}
   - BT NXT
   - {t: scroll, h: toggle}
-  - {t: left&right, h: toggle}
+  - {t: extra, h: toggle}
   - BT PRV
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - BT CLR
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  left&right:
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: scroll, h: toggle}
-  - {t: extra, h: toggle}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   extra:
