@@ -29,19 +29,6 @@
 
         tap-ms = <30>;
     };
-
-    tiktok_encoder: tiktok_encoder {
-        compatible = "zmk,behavior-sensor-rotate";
-        #sensor-binding-cells = <0>;
-        bindings = <&kp C_NEXT>, <&kp C_PREV>;
-    };
-
-    redbook_encoder: redbook_encoder {
-        compatible = "zmk,behavior-sensor-rotate";
-        #sensor-binding-cells = <0>;
-        bindings = <&kp UP_ARROW>, <&kp DOWN_ARROW>;
-    };
-
     
     keymap0: keymap {
         compatible = "zmk,keymap";
@@ -57,34 +44,35 @@
             sensor-bindings = <&scroll_encoder>;
         };
 
-        mediaone_layer {
-            display-name = "up&down_tiktok";       
+        fn_layer {
+            display-name = "up&down";       
             bindings = <
                 &mkp LCLK              &mmv MOVE_UP
                 &to 0          &to 2   &mmv MOVE_DOWN  
                 &kp UP_ARROW   &trans  &mmv MOVE_LEFT
                 &kp DOWN_ARROW         &mmv MOVE_RIGHT      
             >;
-            sensor-bindings = <&tiktok_encoder>; 
+            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
-        mediatwo_layer {
-            display-name = "up&down_redbook";       
+        
+        media_layer {
+            display-name = "video";       
             bindings = <
-                &mkp LCLK           &mmv MOVE_UP
-                &to 0       &to 3   &mmv MOVE_DOWN  
-                &kp C_NEXT  &trans  &mmv MOVE_LEFT
-                &kp C_PREV          &mmv MOVE_RIGHT      
+                &mkp LCLK              &kp C_NEXT
+                &to 0          &to 3   &kp C_PREV 
+                &kp C_AC_BACK  &trans  &kp UP_ARROW
+                &kp C_AC_HOME          &kp DOWN_ARROW    
             >;
-            sensor-bindings = <&redbook_encoder>;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
 
         tri_layer {
             display-name = "volume";
             bindings = <
-                &kp C_MUTE             &trans
-                &to 0          &to 4   &trans  
-                &kp C_AC_BACK  &trans  &trans
-                &kp C_AC_FORWARD       &trans
+                &kp C_MUTE         &trans
+                &to 0      &to 4   &trans  
+                &trans     &trans  &trans
+                &trans             &trans
             >;
             sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
@@ -115,7 +103,7 @@
             display-name = "mouse";
             bindings = <
                 &mkp LCLK         &mmv MOVE_UP
-                &to 0     &to 6 7  &mmv MOVE_DOWN 
+                &to 0     &to 7   &mmv MOVE_DOWN 
                 &trans    &trans  &mmv MOVE_LEFT
                 &trans            &mmv MOVE_RIGHT 
             >;
