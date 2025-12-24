@@ -54,7 +54,7 @@
             >;
             sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
-        
+
         media_layer {
             display-name = "video";       
             bindings = <
@@ -63,7 +63,7 @@
                 &kp C_AC_BACK  &trans  &kp UP_ARROW
                 &kp C_AC_HOME          &kp DOWN_ARROW    
             >;
-            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
+            sensor-bindings = <&inc_dec_kp C_NEXT C_PREV>;
         };
 
         tri_layer {
