@@ -4,35 +4,35 @@ layers:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - AC HOME
-  - {t: up&down, h: toggle}
+  - {t: redbook, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
   - {t: ▽, type: trans}
   - '&mmv MOVE_LEFT'
-  - AC STOP
+  - {t: ▽, type: trans}
   - '&mmv MOVE_RIGHT'
-  up&down:
+  redbook:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: scroll, h: toggle}
-  - {t: video, h: toggle}
+  - {t: tiktok, h: toggle}
   - '&mmv MOVE_DOWN'
-  - UP ARROW
-  - {t: ▽, type: trans}
-  - '&mmv MOVE_LEFT'
-  - DOWN ARROW
-  - '&mmv MOVE_RIGHT'
-  video:
-  - '&mkp LCLK'
-  - NEXT
-  - {t: scroll, h: toggle}
-  - {t: volume, h: toggle}
-  - PREV
   - AC BACK
   - {t: ▽, type: trans}
-  - UP ARROW
+  - '&mmv MOVE_LEFT'
   - AC HOME
-  - DOWN ARROW
+  - '&mmv MOVE_RIGHT'
+  tiktok:
+  - '&mkp LCLK'
+  - '&mmv MOVE_UP'
+  - {t: scroll, h: toggle}
+  - {t: volume, h: toggle}
+  - '&mmv MOVE_DOWN'
+  - AC BACK
+  - {t: ▽, type: trans}
+  - '&mmv MOVE_LEFT'
+  - AC HOME
+  - '&mmv MOVE_RIGHT'
   volume:
   - MUTE
   - {t: ▽, type: trans}
