@@ -26,8 +26,6 @@
         compatible = "zmk,behavior-sensor-rotate";
         #sensor-binding-cells = <0>;
         bindings = <&msc SCRL_DOWN>, <&msc SCRL_UP>;
-
-        tap-ms = <30>;
     };
 
     tiktok_encoder: tiktok_encoder {
@@ -51,7 +49,7 @@
                 &mkp LCLK              &mmv MOVE_UP
                 &kp C_AC_HOME  &to 1   &mmv MOVE_DOWN  
                 &kp C_AC_BACK  &trans  &mmv MOVE_LEFT
-                &trans                 &mmv MOVE_RIGHT        
+                &kp C_AC_FORWARD       &mmv MOVE_RIGHT        
             >; 
             sensor-bindings = <&scroll_encoder>;
         };
