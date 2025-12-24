@@ -4,45 +4,45 @@ layers:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - AC HOME
-  - {t: up&down_tiktok, h: toggle}
+  - {t: up&down, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
   - {t: ▽, type: trans}
   - '&mmv MOVE_LEFT'
   - AC STOP
   - '&mmv MOVE_RIGHT'
-  up&down_tiktok:
+  up&down:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: scroll, h: toggle}
-  - {t: up&down_redbook, h: toggle}
+  - {t: video, h: toggle}
   - '&mmv MOVE_DOWN'
   - UP ARROW
   - {t: ▽, type: trans}
   - '&mmv MOVE_LEFT'
   - DOWN ARROW
   - '&mmv MOVE_RIGHT'
-  up&down_redbook:
+  video:
   - '&mkp LCLK'
-  - '&mmv MOVE_UP'
+  - NEXT
   - {t: scroll, h: toggle}
   - {t: volume, h: toggle}
-  - '&mmv MOVE_DOWN'
-  - NEXT
-  - {t: ▽, type: trans}
-  - '&mmv MOVE_LEFT'
   - PREV
-  - '&mmv MOVE_RIGHT'
+  - AC BACK
+  - {t: ▽, type: trans}
+  - UP ARROW
+  - AC HOME
+  - DOWN ARROW
   volume:
   - MUTE
   - {t: ▽, type: trans}
   - {t: scroll, h: toggle}
   - {t: left&right, h: toggle}
   - {t: ▽, type: trans}
-  - AC BACK
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  - AC FORWARD
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   left&right:
   - '&mkp LCLK'
@@ -70,7 +70,7 @@ layers:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: scroll, h: toggle}
-  - '&to 6 7'
+  - {t: bluetooth, h: toggle}
   - '&mmv MOVE_DOWN'
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
