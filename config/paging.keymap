@@ -68,12 +68,12 @@
         video2_layer {
             display-name = "tiktok";       
             bindings = <
-                &mkp LCLK              &mmv MOVE_UP
-                &to 0          &to 3   &mmv MOVE_DOWN  
-                &kp C_AC_BACK  &to 1   &mmv MOVE_LEFT
-                &kp C_AC_HOME          &mmv MOVE_RIGHT    
+                &mkp LCLK              &kp C_NEXT
+                &to 0          &to 3   &kp C_PREV  
+                &kp C_AC_BACK  &to 1   &kp K_VOL_UP
+                &kp C_AC_HOME          &kp K_VOL_DN    
             >;
-            sensor-bindings = <&inc_dec_kp K_NEXT K_PREV>;
+            sensor-bindings = <&inc_dec_kp C_NEXT C_PREV>;
         };
  
         tri_layer {
@@ -84,7 +84,7 @@
                 &trans     &to 2   &trans
                 &trans             &trans
             >;
-            sensor-bindings = <&inc_dec_kp K_VOL_UP K_VOL_DN>;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
 
         extraone_layer {
