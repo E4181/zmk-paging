@@ -24,15 +24,15 @@ layers:
   - '&mmv MOVE_RIGHT'
   tiktok:
   - '&mkp LCLK'
-  - NEXT
+  - '&mmv MOVE_UP'
   - {t: default, h: toggle}
   - {t: volume, h: toggle}
-  - PREV
+  - '&mmv MOVE_DOWN'
   - AC BACK
   - {t: redbook, h: toggle}
-  - VOL UP
+  - '&mmv MOVE_LEFT'
   - AC HOME
-  - VOL DN
+  - '&mmv MOVE_RIGHT'
   volume:
   - MUTE
   - {t: ▽, type: trans}
