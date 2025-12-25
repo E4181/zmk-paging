@@ -73,18 +73,18 @@
                 &kp C_AC_BACK  &to 1   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT    
             >;
-            sensor-bindings = <&inc_dec_kp C_NEXT C_PREV>;
+            sensor-bindings = <&inc_dec_kp K_NEXT K_PREV>;
         };
  
         tri_layer {
             display-name = "volume";
             bindings = <
-                &kp C_MUTE         &trans
+                &kp K_MUTE         &trans
                 &to 0      &to 4   &trans  
                 &trans     &to 2   &trans
                 &trans             &trans
             >;
-            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
+            sensor-bindings = <&inc_dec_kp K_VOL_UP K_VOL_DN>;
         };
 
         extraone_layer {
