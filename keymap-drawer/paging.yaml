@@ -1,6 +1,6 @@
 layout: {zmk_keyboard: paging}
 layers:
-  default_left&right:
+  default:
   - SPACE
   - R
   - AC HOME
@@ -14,18 +14,18 @@ layers:
   redbook:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
-  - {t: default_left&right, h: toggle}
+  - {t: default, h: toggle}
   - {t: tiktok, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
-  - {t: default_left&right, h: toggle}
+  - {t: default, h: toggle}
   - '&mmv MOVE_LEFT'
   - AC HOME
   - '&mmv MOVE_RIGHT'
   tiktok:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
-  - {t: default_left&right, h: toggle}
+  - {t: default, h: toggle}
   - {t: volume, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
@@ -36,7 +36,7 @@ layers:
   volume:
   - MUTE
   - {t: ▽, type: trans}
-  - {t: default_left&right, h: toggle}
+  - {t: default, h: toggle}
   - {t: up&down, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
@@ -47,7 +47,7 @@ layers:
   up&down:
   - '&mkp LCLK'
   - {t: ▽, type: trans}
-  - {t: default_left&right, h: toggle}
+  - {t: default, h: toggle}
   - {t: mouse, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
@@ -58,29 +58,29 @@ layers:
   mouse:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
-  - {t: default_left&right, h: toggle}
-  - {t: bluetooth, h: toggle}
+  - {t: default, h: toggle}
+  - {t: rgbmode, h: toggle}
   - '&mmv MOVE_DOWN'
   - {t: ▽, type: trans}
-  - {t: mouse, h: toggle}
+  - {t: up&down, h: toggle}
   - '&mmv MOVE_LEFT'
   - {t: ▽, type: trans}
   - '&mmv MOVE_RIGHT'
   rgbmode:
   - RGB TOG
   - RGB EFR
-  - {t: default_left&right, h: toggle}
-  - {t: rgbmode, h: toggle}
+  - {t: default, h: toggle}
+  - {t: bluetooth, h: toggle}
   - {t: ▽, type: trans}
   - RGB BRI
-  - {t: up&down, h: toggle}
+  - {t: mouse, h: toggle}
   - RGB SAI
   - RGB BRD
   - RGB SAD
   bluetooth:
   - {t: ▽, type: trans}
   - BT NXT
-  - {t: default_left&right, h: toggle}
+  - {t: default, h: toggle}
   - {t: extraone, h: toggle}
   - BT PRV
   - {t: ▽, type: trans}
@@ -91,7 +91,7 @@ layers:
   extraone:
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  - {t: default_left&right, h: toggle}
+  - {t: default, h: toggle}
   - {t: extratwo, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
@@ -102,8 +102,8 @@ layers:
   extratwo:
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  - {t: default_left&right, h: toggle}
-  - {t: default_left&right, h: toggle}
+  - {t: default, h: toggle}
+  - {t: default, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - {t: extraone, h: toggle}
