@@ -1,101 +1,112 @@
 layout: {zmk_keyboard: paging}
 layers:
-  scroll:
-  - '&mkp LCLK'
-  - '&mmv MOVE_UP'
+  default_left&right:
+  - SPACE
+  - R
   - AC HOME
   - {t: redbook, h: toggle}
-  - '&mmv MOVE_DOWN'
+  - C
   - AC BACK
   - {t: ▽, type: trans}
-  - '&mmv MOVE_LEFT'
+  - Ctl+F
   - AC FORWARD
-  - '&mmv MOVE_RIGHT'
+  - V
   redbook:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
-  - {t: scroll, h: toggle}
+  - {t: default_left&right, h: toggle}
   - {t: tiktok, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
-  - {t: ▽, type: trans}
+  - {t: default_left&right, h: toggle}
   - '&mmv MOVE_LEFT'
   - AC HOME
   - '&mmv MOVE_RIGHT'
   tiktok:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
-  - {t: scroll, h: toggle}
+  - {t: default_left&right, h: toggle}
   - {t: volume, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
-  - {t: ▽, type: trans}
+  - {t: redbook, h: toggle}
   - '&mmv MOVE_LEFT'
   - AC HOME
   - '&mmv MOVE_RIGHT'
   volume:
   - MUTE
   - {t: ▽, type: trans}
-  - {t: scroll, h: toggle}
-  - {t: left&right, h: toggle}
+  - {t: default_left&right, h: toggle}
+  - {t: up&down, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: tiktok, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
+  up&down:
+  - '&mkp LCLK'
+  - {t: ▽, type: trans}
+  - {t: default_left&right, h: toggle}
+  - {t: mouse, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: volume, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  left&right:
+  mouse:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
-  - {t: scroll, h: toggle}
-  - {t: rgbmode, h: toggle}
+  - {t: default_left&right, h: toggle}
+  - {t: bluetooth, h: toggle}
   - '&mmv MOVE_DOWN'
   - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
+  - {t: mouse, h: toggle}
   - '&mmv MOVE_LEFT'
   - {t: ▽, type: trans}
   - '&mmv MOVE_RIGHT'
   rgbmode:
   - RGB TOG
   - RGB EFR
-  - {t: scroll, h: toggle}
-  - {t: mouse, h: toggle}
+  - {t: default_left&right, h: toggle}
+  - {t: rgbmode, h: toggle}
   - {t: ▽, type: trans}
   - RGB BRI
-  - {t: ▽, type: trans}
+  - {t: up&down, h: toggle}
   - RGB SAI
   - RGB BRD
   - RGB SAD
-  mouse:
-  - '&mkp LCLK'
-  - '&mmv MOVE_UP'
-  - {t: scroll, h: toggle}
-  - {t: bluetooth, h: toggle}
-  - '&mmv MOVE_DOWN'
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - '&mmv MOVE_LEFT'
-  - {t: ▽, type: trans}
-  - '&mmv MOVE_RIGHT'
   bluetooth:
   - {t: ▽, type: trans}
   - BT NXT
-  - {t: scroll, h: toggle}
-  - {t: extra, h: toggle}
+  - {t: default_left&right, h: toggle}
+  - {t: extraone, h: toggle}
   - BT PRV
   - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
+  - {t: rgbmode, h: toggle}
   - BT CLR
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  extra:
+  extraone:
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  - {t: scroll, h: toggle}
-  - {t: scroll, h: toggle}
+  - {t: default_left&right, h: toggle}
+  - {t: extratwo, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
+  - {t: bluetooth, h: toggle}
   - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - '&bootloader'
+  extratwo:
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: default_left&right, h: toggle}
+  - {t: default_left&right, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: extraone, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - '&bootloader'
