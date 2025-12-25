@@ -9,7 +9,7 @@ layers:
   - AC BACK
   - {t: ▽, type: trans}
   - '&mmv MOVE_LEFT'
-  - {t: ▽, type: trans}
+  - AC FORWARD
   - '&mmv MOVE_RIGHT'
   redbook:
   - '&mkp LCLK'
