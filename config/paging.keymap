@@ -46,34 +46,34 @@
         default_layer {
             display-name = "default";
             bindings = <
-                &kp SPACE              &kp R
-                &kp C_AC_HOME  &to 1   &kp C  
-                &kp C_AC_BACK  &trans  &kp LC(F)
-                &kp C_AC_FORWARD       &kp V       
+                &mkp LCLK              &mmv MOVE_UP
+                &kp C_AC_HOME  &to 1   &mmv MOVE_DOWN   
+                &kp C_AC_BACK  &to 7   &mmv MOVE_LEFT
+                &kp C_AC_FORWARD       &mmv MOVE_RIGHT         
             >; 
             sensor-bindings = <&inc_dec_kp LEFT_ARROW RIGHT_ARROW>;
         };
 
         viedo1_layer {
-            display-name = "redbook";       
+            display-name = "tiktok";       
             bindings = <
                 &mkp LCLK              &mmv MOVE_UP
                 &to 0          &to 2   &mmv MOVE_DOWN  
                 &kp C_AC_BACK  &to 0   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT        
             >;
-            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
+            sensor-bindings = <&inc_dec_kp C_NEXT C_PREV>;
         };
 
         video2_layer {
-            display-name = "tiktok";       
+            display-name = "fn";       
             bindings = <
                 &mkp LCLK              &mmv MOVE_UP
                 &to 0          &to 3   &mmv MOVE_DOWN  
                 &kp C_AC_BACK  &to 1   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT       
             >;
-            sensor-bindings = <&inc_dec_kp C_NEXT C_PREV>;
+            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
  
         tri_layer {
@@ -137,7 +137,7 @@
                 &trans          &trans
                 &to 0   &to 9   &trans 
                 &trans  &to 7   &trans
-                &trans          &bootloader
+                &trans          &trans
             >;
             sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
