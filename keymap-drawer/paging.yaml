@@ -1,35 +1,35 @@
 layout: {zmk_keyboard: paging}
 layers:
   default:
-  - SPACE
-  - R
+  - '&mkp LCLK'
+  - '&mmv MOVE_UP'
   - AC HOME
-  - {t: redbook, h: toggle}
-  - C
+  - {t: tiktok, h: toggle}
+  - '&mmv MOVE_DOWN'
   - AC BACK
-  - {t: ▽, type: trans}
-  - Ctl+F
+  - {t: bluetooth, h: toggle}
+  - '&mmv MOVE_LEFT'
   - AC FORWARD
-  - V
-  redbook:
+  - '&mmv MOVE_RIGHT'
+  tiktok:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: default, h: toggle}
-  - {t: tiktok, h: toggle}
+  - {t: fn, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
   - {t: default, h: toggle}
   - '&mmv MOVE_LEFT'
   - AC HOME
   - '&mmv MOVE_RIGHT'
-  tiktok:
+  fn:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: default, h: toggle}
   - {t: volume, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
-  - {t: redbook, h: toggle}
+  - {t: tiktok, h: toggle}
   - '&mmv MOVE_LEFT'
   - AC HOME
   - '&mmv MOVE_RIGHT'
@@ -40,7 +40,7 @@ layers:
   - {t: up&down, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  - {t: tiktok, h: toggle}
+  - {t: fn, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
@@ -98,7 +98,7 @@ layers:
   - {t: bluetooth, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  - '&bootloader'
+  - {t: ▽, type: trans}
   extratwo:
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
