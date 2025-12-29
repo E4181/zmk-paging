@@ -60,10 +60,10 @@
         default_layer {
             display-name = "default";
             bindings = <
-                &mkp LCLK              &msc SCRL_UP
-                &to 2          &to 1   &msc SCRL_DOWN   
-                &kp C_AC_BACK  &to 7   &msc SCRL_LEFT 
-                &kp C_AC_FORWARD       &msc SCRL_RIGHT          
+                &kp SPACE              &kp R
+                &kp C_AC_HOME  &to 1   &kp C  
+                &kp C_AC_BACK  &to 7   &kp LC(F)
+                &kp C_AC_FORWARD       &kp V         
             >; 
             sensor-bindings = <&inc_dec_kp LEFT_ARROW RIGHT_ARROW>;
         };
@@ -87,7 +87,7 @@
                 &kp C_AC_BACK  &to 1   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT       
             >;
-            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
+            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>; 
         };
  
         tri_layer {
