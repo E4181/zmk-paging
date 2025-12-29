@@ -41,6 +41,12 @@
         #sensor-binding-cells = <0>;
          bindings = <&kp UP_ARROW>, <&kp DOWN_ARROW>;
     };
+
+        rot_kp: sensor_rotate_kp {
+            compatible = "zmk,behavior-sensor-rotate-var";
+            #sensor-binding-cells = <2>;
+            bindings = <&kp>, <&kp>;
+        };
     
     keymap0: keymap {
         compatible = "zmk,keymap";
@@ -64,7 +70,7 @@
                 &kp C_AC_BACK  &to 0   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT        
             >;
-            sensor-bindings = <&inc_dec_kp C_NEXT C_PREV>;
+            sensor-bindings = <&rot_kp C_NEXT C_PREV>;
         };
 
         video2_layer {
