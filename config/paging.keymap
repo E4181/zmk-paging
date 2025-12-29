@@ -41,12 +41,6 @@
         #sensor-binding-cells = <0>;
          bindings = <&kp UP_ARROW>, <&kp DOWN_ARROW>;
     };
-
-        rot_kp: sensor_rotate_kp {
-            compatible = "zmk,behavior-sensor-rotate-var";
-            #sensor-binding-cells = <2>;
-            bindings = <&msc>, <&msc>;
-        };
     
     keymap0: keymap {
         compatible = "zmk,keymap";
@@ -55,7 +49,7 @@
             display-name = "default";
             bindings = <
                 &mkp LCLK              &msc SCRL_UP
-                &kp C_AC_HOME  &to 1   &msc SCRL_DOWN   
+                &to 2          &to 1   &msc SCRL_DOWN   
                 &kp C_AC_BACK  &to 7   &msc SCRL_LEFT 
                 &kp C_AC_FORWARD       &msc SCRL_RIGHT          
             >; 
@@ -81,7 +75,7 @@
                 &kp C_AC_BACK  &to 1   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT       
             >;
-            sensor-bindings = <&rot_kp SCRL_DOWN SCRL_UP>;
+            sensor-bindings = <&scroll_encoder>;
         };
  
         tri_layer {
