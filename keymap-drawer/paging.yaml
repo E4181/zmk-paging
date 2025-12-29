@@ -3,7 +3,7 @@ layers:
   default:
   - '&mkp LCLK'
   - '&msc SCRL_UP'
-  - AC HOME
+  - {t: fn, h: toggle}
   - {t: tiktok, h: toggle}
   - '&msc SCRL_DOWN'
   - AC BACK
