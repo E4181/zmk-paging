@@ -81,7 +81,7 @@
                 &kp C_AC_BACK  &to 1   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT       
             >;
-            sensor-bindings = <&inc_dec_kp msc SCRL_DOWN msc SCRL_UP>;
+            sensor-bindings = <&inc_dec_kp SCRL_DOWN SCRL_UP>;
         };
  
         tri_layer {
