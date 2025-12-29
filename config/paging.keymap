@@ -1,4 +1,4 @@
-#define ZMK_POINTING_DEFAULT_SCRL_VAL 100 
+#define ZMK_POINTING_DEFAULT_SCRL_VAL 200 
 
 #include <behaviors.dtsi>
 #include <dt-bindings/zmk/bt.h>
@@ -50,8 +50,8 @@
             bindings = <
                 &mkp LCLK              &msc SCRL_UP
                 &kp C_AC_HOME  &to 1   &msc SCRL_DOWN   
-                &kp C_AC_BACK  &to 7   &mmv MOVE_LEFT
-                &kp C_AC_FORWARD       &mmv MOVE_RIGHT         
+                &kp C_AC_BACK  &to 7   &msc SCRL_LEFT 
+                &kp C_AC_FORWARD       &msc SCRL_RIGHT          
             >; 
             sensor-bindings = <&inc_dec_kp LEFT_ARROW RIGHT_ARROW>;
         };
