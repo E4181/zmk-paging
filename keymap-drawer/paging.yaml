@@ -3,7 +3,7 @@ layers:
   default:
   - '&mkp LCLK'
   - '&msc SCRL_UP'
-  - {t: fn, h: toggle}
+  - {t: redbook, h: toggle}
   - {t: tiktok, h: toggle}
   - '&msc SCRL_DOWN'
   - AC BACK
@@ -15,14 +15,14 @@ layers:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: default, h: toggle}
-  - {t: fn, h: toggle}
+  - {t: redbook, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
   - {t: default, h: toggle}
   - '&mmv MOVE_LEFT'
   - AC HOME
   - '&mmv MOVE_RIGHT'
-  fn:
+  redbook:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: default, h: toggle}
@@ -40,7 +40,7 @@ layers:
   - {t: up&down, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  - {t: fn, h: toggle}
+  - {t: redbook, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
