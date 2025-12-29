@@ -65,7 +65,7 @@
                 &kp C_AC_BACK  &to 7   &msc SCRL_LEFT 
                 &kp C_AC_FORWARD       &msc SCRL_RIGHT          
             >; 
-            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
+            sensor-bindings = <&inc_dec_kp LEFT_ARROW RIGHT_ARROW>;
         };
 
         viedo1_layer {
@@ -76,18 +76,18 @@
                 &kp C_AC_BACK  &to 0   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT        
             >;
-            sensor-bindings = <&inc_dec_kp C_NEXT C_PREV>;
+            sensor-bindings = <&scroll_encoder>;
         };
 
         video2_layer {
-            display-name = "fn";       
+            display-name = "redbook";       
             bindings = <
                 &mkp LCLK              &mmv MOVE_UP
                 &to 0          &to 3   &mmv MOVE_DOWN  
                 &kp C_AC_BACK  &to 1   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT       
             >;
-            sensor-bindings = <&scroll_encoder>;
+            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
  
         tri_layer {

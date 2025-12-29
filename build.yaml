@@ -1,7 +1,7 @@
 include:
    - board: nrfmicro_13
      shield: paging
-     snippet: studio-rpc-usb-uart zmk-usb-logging
+     snippet: studio-rpc-usb-uart
    - board: nrfmicro_13
      shield: settings_reset
 
