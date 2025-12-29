@@ -8,9 +8,9 @@ layers:
   - '&msc SCRL_DOWN'
   - AC BACK
   - {t: bluetooth, h: toggle}
-  - '&mmv MOVE_LEFT'
+  - '&msc SCRL_LEFT'
   - AC FORWARD
-  - '&mmv MOVE_RIGHT'
+  - '&msc SCRL_RIGHT'
   tiktok:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
