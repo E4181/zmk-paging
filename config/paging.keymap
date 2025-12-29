@@ -65,7 +65,7 @@
                 &kp C_AC_BACK  &to 7   &msc SCRL_LEFT 
                 &kp C_AC_FORWARD       &msc SCRL_RIGHT          
             >; 
-            sensor-bindings = <&inc_dec_kp LEFT_ARROW RIGHT_ARROW>;
+            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
 
         viedo1_layer {
