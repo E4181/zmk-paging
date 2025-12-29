@@ -1,16 +1,16 @@
 layout: {zmk_keyboard: paging}
 layers:
   default:
-  - '&mkp LCLK'
-  - '&msc SCRL_UP'
-  - {t: redbook, h: toggle}
+  - SPACE
+  - R
+  - AC HOME
   - {t: tiktok, h: toggle}
-  - '&msc SCRL_DOWN'
+  - C
   - AC BACK
   - {t: bluetooth, h: toggle}
-  - '&msc SCRL_LEFT'
+  - Ctl+F
   - AC FORWARD
-  - '&msc SCRL_RIGHT'
+  - V
   tiktok:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
