@@ -15,21 +15,10 @@ layers:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: default, h: toggle}
-  - {t: redbook, h: toggle}
-  - '&mmv MOVE_DOWN'
-  - AC BACK
-  - {t: default, h: toggle}
-  - '&mmv MOVE_LEFT'
-  - AC HOME
-  - '&mmv MOVE_RIGHT'
-  redbook:
-  - '&mkp LCLK'
-  - '&mmv MOVE_UP'
-  - {t: default, h: toggle}
   - {t: volume, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
-  - {t: tiktok, h: toggle}
+  - {t: default, h: toggle}
   - '&mmv MOVE_LEFT'
   - AC HOME
   - '&mmv MOVE_RIGHT'
@@ -37,13 +26,24 @@ layers:
   - MUTE
   - {t: ▽, type: trans}
   - {t: default, h: toggle}
+  - {t: fn, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: tiktok, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  fn:
+  - '&mkp LCLK'
+  - '&mmv MOVE_UP'
+  - {t: default, h: toggle}
   - {t: up&down, h: toggle}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: redbook, h: toggle}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
+  - '&mmv MOVE_DOWN'
+  - AC BACK
+  - {t: volume, h: toggle}
+  - '&mmv MOVE_LEFT'
+  - AC HOME
+  - '&mmv MOVE_RIGHT'
   up&down:
   - '&mkp LCLK'
   - {t: ▽, type: trans}
@@ -51,7 +51,7 @@ layers:
   - {t: mouse, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  - {t: volume, h: toggle}
+  - {t: fn, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
