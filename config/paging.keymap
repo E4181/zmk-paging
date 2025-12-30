@@ -1,4 +1,4 @@
-#define ZMK_POINTING_DEFAULT_SCRL_VAL 10
+#define ZMK_POINTING_DEFAULT_SCRL_VAL 100
 
 #include <behaviors.dtsi>
 #include <dt-bindings/zmk/bt.h>
@@ -9,13 +9,13 @@
 #include <input/processors.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
-&msc_input_listener { input-processors = <&zip_scroll_scaler 2 1>; };
+//&msc_input_listener { input-processors = <&zip_scroll_scaler 2 1>; };
 
-&msc {
-    acceleration-exponent = <0>;      // 0
-    time-to-max-speed-ms = <50>;       // 300
-    delay-ms = <0>;                   // 0
-};
+//&msc {
+//    acceleration-exponent = <0>;      // 0
+//    time-to-max-speed-ms = <50>;       // 300
+//    delay-ms = <0>;                   // 0
+//};
 
 / {
     rgb_bri_encoder: rgb_bri_encoder {
