@@ -19,20 +19,20 @@ layers:
   - '&mmv MOVE_DOWN'
   - AC BACK
   - {t: default, h: toggle}
-  - '&msc SCRL_UP'
+  - '&mmv MOVE_LEFT'
   - AC HOME
-  - '&msc SCRL_DOWN'
+  - '&mmv MOVE_RIGHT'
   volume:
   - MUTE
-  - {t: ▽, type: trans}
+  - '&msc SCRL_UP'
   - {t: default, h: toggle}
   - {t: fn, h: toggle}
-  - {t: ▽, type: trans}
+  - '&msc SCRL_DOWN'
   - {t: ▽, type: trans}
   - {t: tiktok, h: toggle}
+  - VOL UP
   - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
+  - VOL DN
   fn:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
