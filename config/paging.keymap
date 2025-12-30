@@ -9,13 +9,7 @@
 #include <input/processors.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
-//&msc_input_listener { input-processors = <&zip_scroll_scaler 2 1>; };
 
-//&msc {
-//    acceleration-exponent = <0>;      // 0
-//    time-to-max-speed-ms = <50>;       // 300
-//    delay-ms = <0>;                   // 0
-//};
 
 / {
     rgb_bri_encoder: rgb_bri_encoder {
