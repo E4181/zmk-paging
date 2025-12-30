@@ -129,21 +129,17 @@ path.combo {
 <g transform="translate(0, 56)">
 <g transform="translate(28, 28)" class="key keypos-0">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
-<text x="0" y="0" class="key tap">
-<tspan x="0" dy="-0.6em">&amp;mkp</tspan><tspan x="0" dy="1.2em">LCLK</tspan>
-</text>
+<text x="0" y="0" class="key tap">SPACE</text>
 </g>
 <g transform="translate(140, 28)" class="key keypos-1">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
-<text x="0" y="0" class="key tap">
-<tspan x="0" dy="-0.6em">&amp;msc</tspan><tspan x="0" dy="1.2em">SCRL_UP</tspan>
-</text>
+<text x="0" y="0" class="key tap">R</text>
 </g>
 <g transform="translate(28, 84)" class="key keypos-2">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
-<a href="#redbook">
-<text x="0" y="0" class="key tap layer-activator">redbook</text>
-</a><text x="0" y="24" class="key hold">toggle</text>
+<text x="0" y="0" class="key tap">
+<tspan x="0" dy="-0.6em">AC</tspan><tspan x="0" dy="1.2em">HOME</tspan>
+</text>
 </g>
 <g transform="translate(84, 84)" class="key keypos-3">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
@@ -153,9 +149,7 @@ path.combo {
 </g>
 <g transform="translate(140, 84)" class="key keypos-4">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
-<text x="0" y="0" class="key tap">
-<tspan x="0" dy="-0.6em" style="font-size: 78%">&amp;msc</tspan><tspan x="0" dy="1.2em" style="font-size: 78%">SCRL_DOWN</tspan>
-</text>
+<text x="0" y="0" class="key tap">C</text>
 </g>
 <g transform="translate(28, 140)" class="key keypos-5">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
@@ -171,9 +165,7 @@ path.combo {
 </g>
 <g transform="translate(140, 140)" class="key keypos-7">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
-<text x="0" y="0" class="key tap">
-<tspan x="0" dy="-0.6em" style="font-size: 78%">&amp;msc</tspan><tspan x="0" dy="1.2em" style="font-size: 78%">SCRL_LEFT</tspan>
-</text>
+<text x="0" y="0" class="key tap">Ctl+F</text>
 </g>
 <g transform="translate(28, 196)" class="key keypos-8">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
@@ -183,9 +175,7 @@ path.combo {
 </g>
 <g transform="translate(140, 196)" class="key keypos-9">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
-<text x="0" y="0" class="key tap">
-<tspan x="0" dy="-0.6em" style="font-size: 70%">&amp;msc</tspan><tspan x="0" dy="1.2em" style="font-size: 70%">SCRL_RIGHT</tspan>
-</text>
+<text x="0" y="0" class="key tap">V</text>
 </g>
 </g>
 </g>
