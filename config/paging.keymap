@@ -1,4 +1,4 @@
-#define ZMK_POINTING_DEFAULT_SCRL_VAL 20
+#define ZMK_POINTING_DEFAULT_SCRL_VAL 10
 
 #include <behaviors.dtsi>
 #include <dt-bindings/zmk/bt.h>
@@ -9,7 +9,7 @@
 #include <input/processors.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
-&msc_input_listener { input-processors = <&zip_scroll_scaler 4 1>; };
+&msc_input_listener { input-processors = <&zip_scroll_scaler 2 1>; };
 
 &msc {
     acceleration-exponent = <0>;      // 0
@@ -73,8 +73,8 @@
             bindings = <
                 &mkp LCLK              &mmv MOVE_UP
                 &to 0          &to 2   &mmv MOVE_DOWN  
-                &kp C_AC_BACK  &to 0   &mmv MOVE_LEFT
-                &kp C_AC_HOME          &mmv MOVE_RIGHT        
+                &kp C_AC_BACK  &to 0   &msc SCRL_UP
+                &kp C_AC_HOME          &msc SCRL_DOWN       
             >;
             sensor-bindings = <&scroll_encoder>;
         };
