@@ -1,38 +1,27 @@
 layout: {zmk_keyboard: paging}
 layers:
   default:
-  - SPACE
-  - R
+  - MUTE
+  - PLAY
   - AC HOME
   - {t: tiktok, h: toggle}
-  - C
+  - PAUSE
   - AC BACK
   - {t: bluetooth, h: toggle}
-  - Ctl+F
+  - LEFT ARROW
   - AC FORWARD
-  - V
+  - RIGHT ARROW
   tiktok:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: default, h: toggle}
-  - {t: volume, h: toggle}
+  - {t: fn, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
   - {t: default, h: toggle}
   - '&mmv MOVE_LEFT'
   - AC HOME
   - '&mmv MOVE_RIGHT'
-  volume:
-  - MUTE
-  - '&msc SCRL_UP'
-  - {t: default, h: toggle}
-  - {t: fn, h: toggle}
-  - '&msc SCRL_DOWN'
-  - {t: ▽, type: trans}
-  - {t: tiktok, h: toggle}
-  - VOL UP
-  - {t: ▽, type: trans}
-  - VOL DN
   fn:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
@@ -40,10 +29,21 @@ layers:
   - {t: up&down, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
-  - {t: volume, h: toggle}
+  - {t: tiktok, h: toggle}
   - '&mmv MOVE_LEFT'
   - AC HOME
   - '&mmv MOVE_RIGHT'
+  left&right:
+  - MUTE
+  - '&msc SCRL_UP'
+  - {t: default, h: toggle}
+  - {t: up&down, h: toggle}
+  - '&msc SCRL_DOWN'
+  - {t: ▽, type: trans}
+  - {t: fn, h: toggle}
+  - VOL UP
+  - {t: ▽, type: trans}
+  - VOL DN
   up&down:
   - '&mkp LCLK'
   - {t: ▽, type: trans}
@@ -51,7 +51,7 @@ layers:
   - {t: mouse, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
-  - {t: fn, h: toggle}
+  - {t: left&right, h: toggle}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
   - {t: ▽, type: trans}
