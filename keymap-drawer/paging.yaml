@@ -26,7 +26,7 @@ layers:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: default, h: toggle}
-  - {t: up&down, h: toggle}
+  - {t: left&right, h: toggle}
   - '&mmv MOVE_DOWN'
   - AC BACK
   - {t: tiktok, h: toggle}
