@@ -77,7 +77,7 @@
             display-name = "fn";
             bindings = <
                 &mkp LCLK              &mmv MOVE_UP
-                &to 0          &to 4   &mmv MOVE_DOWN  
+                &to 0          &to 3   &mmv MOVE_DOWN  
                 &kp C_AC_BACK  &to 1   &mmv MOVE_LEFT
                 &kp C_AC_HOME          &mmv MOVE_RIGHT      
                 
