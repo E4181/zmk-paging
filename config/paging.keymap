@@ -54,12 +54,12 @@
         default_layer {
             display-name = "default";
             bindings = <
-                &kp C_MUTE             &kp C_PLAY
-                &kp C_AC_HOME  &to 1   &kp C_PAUSE 
+                &mkp LCLK              &kp LEFT_ARROW
+                &kp C_AC_HOME  &to 1   &kp RIGHT_ARROW 
                 &kp C_AC_BACK  &to 7   &kp LEFT_ARROW
                 &kp C_AC_FORWARD       &kp RIGHT_ARROW         
             >; 
-           sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
+            sensor-bindings = <&inc_dec_kp LEFT_ARROW RIGHT_ARROW>;
         };
 
         viedo1_layer {
