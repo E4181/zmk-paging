@@ -1,11 +1,11 @@
 layout: {zmk_keyboard: paging}
 layers:
   default:
-  - MUTE
-  - PLAY
+  - '&mkp LCLK'
+  - LEFT ARROW
   - AC HOME
   - {t: tiktok, h: toggle}
-  - PAUSE
+  - RIGHT ARROW
   - AC BACK
   - {t: bluetooth, h: toggle}
   - LEFT ARROW
