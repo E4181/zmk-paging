@@ -13,6 +13,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
+#include <stdio.h>  /* 添加stdio.h头文件 */
 
 /* 直接在驱动文件中定义Kconfig宏 */
 #ifndef CONFIG_CHARGING_STATUS_LOG_LEVEL
@@ -149,12 +150,12 @@ static void charging_status_debounce_work(struct k_work *work)
         int64_t processing_time = k_uptime_get() - start_time;
         
         /* 记录状态变化信息 */
-        LOG_INF("CHARGING STATUS CHANGED: %s -> %s (processing: %lldms, changes: %d, interrupts: %d)",
+        LOG_INF("CHARGING STATUS CHANGED: %s -> %s (processing: %lldms, changes: %ld, interrupts: %ld)",
                 old_charging_status ? "CHARGING" : "NOT_CHARGING",
                 new_charging_status ? "CHARGING" : "NOT_CHARGING",
                 processing_time,
-                atomic_get(&data->change_count),
-                atomic_get(&data->interrupt_count));
+                (long)atomic_get(&data->change_count),
+                (long)atomic_get(&data->interrupt_count));
         
         /* 如果注册了用户回调，则通知 */
         if (data->user_callback) {
@@ -224,11 +225,11 @@ static int charging_status_get_stats(const struct device *dev,
     }
     
     if (change_count) {
-        *change_count = atomic_get(&data->change_count);
+        *change_count = (uint32_t)atomic_get(&data->change_count);
     }
     
     if (interrupt_count) {
-        *interrupt_count = atomic_get(&data->interrupt_count);
+        *interrupt_count = (uint32_t)atomic_get(&data->interrupt_count);
     }
     
     return 0;
