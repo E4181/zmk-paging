@@ -2,11 +2,15 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/kernel.h>
 
-// 在驱动文件中以宏定义Kconfig配置，默认低电平表示充电中
+// 默认低电平表示充电中
 #ifndef CONFIG_CHARGING_STATUS_ACTIVE_LOW
 #define CONFIG_CHARGING_STATUS_ACTIVE_LOW 1
 #endif
+
+// 去抖动延迟（毫秒），可调整以平衡准确性和及时性
+#define DEBOUNCE_MS 10
 
 LOG_MODULE_REGISTER(charging_status, LOG_LEVEL_INF);
 
@@ -17,14 +21,15 @@ struct charging_status_data {
     struct gpio_callback gpio_cb;
     const struct sensor_trigger *trig_handler;
     sensor_trigger_handler_t handler;
+    struct k_timer debounce_timer;
 };
 
 struct charging_status_cfg {
     struct gpio_dt_spec gpio;
 };
 
-static void charging_isr(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
-    struct charging_status_data *data = CONTAINER_OF(cb, struct charging_status_data, gpio_cb);
+static void debounce_handler(struct k_timer *timer) {
+    struct charging_status_data *data = CONTAINER_OF(timer, struct charging_status_data, debounce_timer);
     const struct device *sensor = DEVICE_DT_GET(DT_DRV_INST(0));
     const struct charging_status_cfg *cfg = sensor->config;
     int level = gpio_pin_get_dt(&cfg->gpio);
@@ -38,12 +43,27 @@ static void charging_isr(const struct device *dev, struct gpio_callback *cb, uin
 
     if (new_charging != data->charging) {
         data->charging = new_charging;
-        LOG_INF("Charging status changed to: %s", data->charging ? "Charging" : "Completed");
+        LOG_INF("Charging status changed to: %s (debounced)", data->charging ? "Charging" : "Completed");
 
         if (data->handler) {
             data->handler(sensor, data->trig_handler);
         }
     }
+
+    // 重新启用中断
+    gpio_pin_interrupt_configure_dt(&cfg->gpio, GPIO_INT_EDGE_BOTH);
+}
+
+static void charging_isr(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
+    struct charging_status_data *data = CONTAINER_OF(cb, struct charging_status_data, gpio_cb);
+    const struct device *sensor = DEVICE_DT_GET(DT_DRV_INST(0));
+    const struct charging_status_cfg *cfg = sensor->config;
+
+    // 禁用中断以防止噪声触发
+    gpio_pin_interrupt_configure_dt(&cfg->gpio, GPIO_INT_DISABLE);
+
+    // 启动去抖动定时器
+    k_timer_start(&data->debounce_timer, K_MSEC(DEBOUNCE_MS), K_NO_WAIT);
 }
 
 static int charging_status_init(const struct device *dev) {
@@ -75,7 +95,10 @@ static int charging_status_init(const struct device *dev) {
         return ret;
     }
 
-    // 初始读取并日志
+    // 初始化去抖动定时器
+    k_timer_init(&data->debounce_timer, debounce_handler, NULL);
+
+    // 初始读取并日志（无去抖动，因为是初始化）
     int level = gpio_pin_get_dt(&cfg->gpio);
 #if CONFIG_CHARGING_STATUS_ACTIVE_LOW
     data->charging = (level == 0);
