@@ -80,6 +80,10 @@ static int ble_check_listener(const zmk_event_t *eh)
     return 0;
 }
 
+/* ZMK事件订阅必须在全局作用域 */
+ZMK_LISTENER(ble_check, ble_check_listener);
+ZMK_SUBSCRIPTION(ble_check, zmk_ble_active_profile_changed);
+
 /**
  * @brief 初始化 BLE_CHECK 驱动
  */
@@ -90,9 +94,6 @@ static int ble_check_init(void)
     LOG_DBG("  - BLE_CHECK_ENABLED: %d", BLE_CHECK_ENABLED);
     LOG_DBG("  - BLE_CHECK_LOG_LEVEL: %d", BLE_CHECK_LOG_LEVEL);
     LOG_DBG("  - BLE_CHECK_INIT_PRIORITY: %d", BLE_CHECK_INIT_PRIORITY);
-    
-    /* 订阅蓝牙活跃profile变化事件 */
-    ZMK_SUBSCRIPTION(ble_check, zmk_ble_active_profile_changed);
     
     /* 获取初始连接状态 */
     last_connection_state = zmk_ble_active_profile_is_connected();
@@ -105,9 +106,6 @@ static int ble_check_init(void)
     
     return 0;
 }
-
-/* 注册事件监听器 */
-ZMK_LISTENER(ble_check, ble_check_listener);
 
 /* 初始化驱动 */
 SYS_INIT(ble_check_init, APPLICATION, BLE_CHECK_INIT_PRIORITY);
