@@ -1,5 +1,4 @@
-# app/dts/bindings/charging-status.yaml
-description: TP4056 charging status detector (CHRG pin, interrupt only)
+description: TP4056 charging status detector with breathing LED
 
 compatible: "custom,charging-status"
 
@@ -7,6 +6,9 @@ properties:
   chrg-gpios:
     type: phandle-array
     required: true
-    description: |
-      GPIO connected to TP4056 CHRG pin.
-      Must be configured as input, external pull-up exists.
+    description: TP4056 CHRG pin (external pull-up, active low)
+
+  led-gpios:
+    type: phandle-array
+    required: true
+    description: LED GPIO used for breathing indication (active high)

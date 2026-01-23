@@ -79,7 +79,8 @@
     
     charging_status: charging_status {
         compatible = "custom,charging-status";
-        chrg-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+        chrg-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;   /* P1.09 */
+        led-gpios  = <&gpio0 26 GPIO_ACTIVE_HIGH>;/* P0.26 */
     };
 
 };

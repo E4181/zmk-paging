@@ -46,5 +46,11 @@ config CHARGING_STATUS
     bool "TP4056 charging status driver"
     default y
     depends on GPIO
+    select LOG
     help
-      Enable interrupt-based TP4056 CHRG pin charging status detection.
+      Interrupt-based TP4056 charging detection with breathing LED indicator.
+
+config CHARGING_STATUS_LOG_LEVEL
+    int "Charging status log level"
+    default 3
+    depends on CHARGING_STATUS
