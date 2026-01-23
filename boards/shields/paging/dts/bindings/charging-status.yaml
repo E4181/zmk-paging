@@ -1,12 +1,25 @@
-description: 
+# SPDX-License-Identifier: MIT
+
+description: Charging status detector with PWM breathing LED indicator.
 
 compatible: "zmk,charging-status"
+
+include:
+  - name: base.yaml
+  - name: gpio.yaml
+  - name: pwm.yaml
 
 properties:
   charge-gpios:
     type: phandle-array
     required: true
+    description: |
+      GPIO input used to detect charging status.
+      Active low.
 
   pwms:
     type: phandle-array
     required: true
+    description: |
+      PWM specifier used to drive the charging LED.
+      The PWM output must be mapped to a GPIO pin via pinctrl.
