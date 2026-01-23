@@ -87,7 +87,11 @@ static int charging_status_init(const struct device *dev) {
     return 0;
 }
 
-static int charging_status_sample_fetch(const struct device *dev) {
+static int charging_status_sample_fetch(const struct device *dev, enum sensor_channel chan) {
+    if (chan != SENSOR_CHAN_ALL) {
+        return -ENOTSUP;
+    }
+
     struct charging_status_data *data = dev->data;
     const struct charging_status_cfg *cfg = dev->config;
     int level = gpio_pin_get_dt(&cfg->gpio);
