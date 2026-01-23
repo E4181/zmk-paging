@@ -21,7 +21,7 @@
 #endif
 
 #ifndef CONFIG_CHARGING_STATUS_INIT_PRIORITY
-#define CONFIG_CHARGING_STATUS_INIT_PRIORITY 70
+#define CONFIG_CHARGING_STATUS_INIT_PRIORITY 90
 #endif
 
 #ifndef CONFIG_CHARGING_STATUS_THREAD_STACK_SIZE
@@ -342,7 +342,6 @@ static int charging_status_get_gpio_state(const struct device *dev,
                                         int *raw_level,
                                         int *logical_level)
 {
-    const struct charging_status_data *data = dev->data;
     const struct charging_status_config *config = dev->config;
     int ret;
     
