@@ -1,2 +1,6 @@
 config SHIELD_PAGING
     def_bool $(shields_list_contains,paging)
+
+config ZMK_SHIELD_PAGING
+    bool "Paging shield"
+    depends on ZMK

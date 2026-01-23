@@ -1,3 +1,7 @@
+BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) > 0,
+             "No charging_status device instances found");
+
+
 #define DT_DRV_COMPAT zmk_charging_status
 
 #include <zephyr/device.h>
