@@ -13,11 +13,11 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
-#include <stdio.h>  /* 添加stdio.h头文件 */
+#include <stdio.h>
 
 /* 直接在驱动文件中定义Kconfig宏 */
 #ifndef CONFIG_CHARGING_STATUS_LOG_LEVEL
-#define CONFIG_CHARGING_STATUS_LOG_LEVEL 4  /* 默认: DEBUG级别以便调试 */
+#define CONFIG_CHARGING_STATUS_LOG_LEVEL 4  /* DEBUG级别 */
 #endif
 
 #ifndef CONFIG_CHARGING_STATUS_INIT_PRIORITY
@@ -32,7 +32,14 @@
 #define CONFIG_CHARGING_STATUS_THREAD_PRIORITY 10
 #endif
 
-/* 日志模块注册 */
+#ifndef CONFIG_CHARGING_STATUS_DEBOUNCE_MS
+#define CONFIG_CHARGING_STATUS_DEBOUNCE_MS 100  /* 防抖动时间 */
+#endif
+
+#ifndef CONFIG_CHARGING_STATUS_MIN_STABLE_TIME_MS
+#define CONFIG_CHARGING_STATUS_MIN_STABLE_TIME_MS 500  /* 最小稳定时间 */
+#endif
+
 LOG_MODULE_REGISTER(charging_status, CONFIG_CHARGING_STATUS_LOG_LEVEL);
 
 /* 驱动数据结构 */
@@ -73,6 +80,15 @@ struct charging_status_data {
     
     /* 中断计数 */
     atomic_t interrupt_count;
+    
+    /* 最后一次稳定的状态 */
+    int last_stable_state;
+    
+    /* 状态稳定开始时间 */
+    int64_t stable_since;
+    
+    /* 硬件故障标志 */
+    atomic_t hardware_fault;
 };
 
 /* 驱动配置结构 */
@@ -91,6 +107,30 @@ struct charging_status_config {
 static void charging_status_debounce_work(struct k_work *work);
 static void charging_status_monitor_thread(void *p1, void *p2, void *p3);
 
+/* 读取稳定的GPIO状态（多次采样取多数） */
+static int read_stable_gpio_state(const struct gpio_dt_spec *gpio)
+{
+    int samples[5];
+    int low_count = 0, high_count = 0;
+    
+    for (int i = 0; i < 5; i++) {
+        int state = gpio_pin_get_dt(gpio);
+        if (state < 0) {
+            return state;  /* 读取错误 */
+        }
+        samples[i] = state;
+        if (state == 0) {
+            low_count++;
+        } else {
+            high_count++;
+        }
+        k_busy_wait(1000);  /* 等待1ms */
+    }
+    
+    /* 返回多数状态 */
+    return (low_count > high_count) ? 0 : 1;
+}
+
 /* GPIO中断回调 */
 static void charging_status_gpio_callback(const struct device *dev,
                                          struct gpio_callback *cb,
@@ -107,8 +147,9 @@ static void charging_status_gpio_callback(const struct device *dev,
             data->config->chrg_gpio.pin,
             pins);
     
-    /* 立即调度防抖动工作 - 不延迟，因为我们已经在中断上下文中 */
-    k_work_submit(&data->debounce_work.work);
+    /* 取消可能未完成的工作，然后重新调度（防抖动） */
+    k_work_cancel_delayable(&data->debounce_work);
+    k_work_schedule(&data->debounce_work, K_MSEC(CONFIG_CHARGING_STATUS_DEBOUNCE_MS));
 }
 
 /* 防抖动工作处理器 */
@@ -123,24 +164,46 @@ static void charging_status_debounce_work(struct k_work *work)
     
     int64_t start_time = k_uptime_get();
     
-    /* 获取当前GPIO状态 */
-    ret = gpio_pin_get_dt(&config->chrg_gpio);
+    /* 读取稳定的GPIO状态 */
+    ret = read_stable_gpio_state(&config->chrg_gpio);
     if (ret < 0) {
-        LOG_ERR("Failed to get GPIO state: %d", ret);
+        LOG_ERR("Failed to read stable GPIO state: %d", ret);
         return;
     }
     
     current_state = ret;
     
     /* TP4056 CHRG引脚: 充电时低电平，不充电时高电平 */
-    /* 注意: GPIO_ACTIVE_LOW意味着逻辑低电平表示活动状态 */
     int new_charging_status = (current_state == 0);
     int old_charging_status = atomic_get(&data->charging);
     
-    LOG_DBG("Debounce work: pin state=%d, old_status=%s, new_status=%s",
+    LOG_DBG("Debounce work: stable pin state=%d, old_status=%s, new_status=%s",
             current_state,
             old_charging_status ? "CHARGING" : "NOT_CHARGING",
             new_charging_status ? "CHARGING" : "NOT_CHARGING");
+    
+    /* 检查状态是否稳定足够长时间 */
+    int64_t current_time = k_uptime_get();
+    if (current_state != data->last_stable_state) {
+        /* 状态变化，重置稳定计时 */
+        data->last_stable_state = current_state;
+        data->stable_since = current_time;
+        LOG_DBG("State changed, resetting stable timer");
+    } else if ((current_time - data->stable_since) < CONFIG_CHARGING_STATUS_MIN_STABLE_TIME_MS) {
+        /* 状态未稳定足够时间，忽略变化 */
+        LOG_DBG("State not stable long enough (%lld < %d), ignoring",
+                current_time - data->stable_since,
+                CONFIG_CHARGING_STATUS_MIN_STABLE_TIME_MS);
+        return;
+    }
+    
+    /* 检测可能的硬件故障：频繁状态切换 */
+    uint32_t recent_changes = atomic_get(&data->change_count);
+    if (recent_changes > 100) {  /* 如果短时间内变化超过100次 */
+        atomic_set(&data->hardware_fault, 1);
+        LOG_ERR("HARDWARE FAULT DETECTED: Too many state changes (%lu), possible connection issue",
+                (unsigned long)recent_changes);
+    }
     
     if (new_charging_status != old_charging_status) {
         atomic_set(&data->charging, new_charging_status);
@@ -149,7 +212,6 @@ static void charging_status_debounce_work(struct k_work *work)
         
         int64_t processing_time = k_uptime_get() - start_time;
         
-        /* 记录状态变化信息 */
         LOG_INF("CHARGING STATUS CHANGED: %s -> %s (processing: %lldms, changes: %ld, interrupts: %ld)",
                 old_charging_status ? "CHARGING" : "NOT_CHARGING",
                 new_charging_status ? "CHARGING" : "NOT_CHARGING",
@@ -162,7 +224,7 @@ static void charging_status_debounce_work(struct k_work *work)
             data->user_callback(new_charging_status, data->user_callback_data);
         }
     } else {
-        LOG_DBG("Status unchanged: %s (pin state: %d)", 
+        LOG_DBG("Status unchanged: %s (stable pin state: %d)", 
                 new_charging_status ? "CHARGING" : "NOT_CHARGING",
                 current_state);
     }
@@ -184,9 +246,19 @@ static void charging_status_monitor_thread(void *p1, void *p2, void *p3)
         
         int64_t check_duration = k_uptime_get() - check_time;
         
-        /* 记录周期性检查信息 */
         LOG_DBG("Periodic check completed in %lldms for instance %d", 
                 check_duration, data->config->instance);
+        
+        /* 检查硬件故障 */
+        if (atomic_get(&data->hardware_fault)) {
+            LOG_ERR("Hardware fault detected! Check CHRG pin connection");
+            /* 可以在这里添加恢复逻辑，比如重置计数器 */
+            if (atomic_get(&data->change_count) > 200) {
+                atomic_set(&data->change_count, 0);
+                atomic_set(&data->interrupt_count, 0);
+                LOG_WRN("Reset counters due to hardware fault");
+            }
+        }
         
         /* 按照配置的间隔休眠 */
         k_msleep(data->config->status_interval_ms);
@@ -197,7 +269,6 @@ static void charging_status_monitor_thread(void *p1, void *p2, void *p3)
 static int charging_status_get(const struct device *dev, bool *is_charging)
 {
     const struct charging_status_data *data = dev->data;
-    int64_t start_time = k_uptime_get();
     
     if (is_charging == NULL) {
         return -EINVAL;
@@ -205,9 +276,7 @@ static int charging_status_get(const struct device *dev, bool *is_charging)
     
     *is_charging = (atomic_get(&data->charging) != 0);
     
-    LOG_DBG("Status query: %s (query time: %lldms)",
-            *is_charging ? "CHARGING" : "NOT_CHARGING",
-            k_uptime_get() - start_time);
+    LOG_DBG("Status query: %s", *is_charging ? "CHARGING" : "NOT_CHARGING");
     
     return 0;
 }
@@ -216,7 +285,8 @@ static int charging_status_get(const struct device *dev, bool *is_charging)
 static int charging_status_get_stats(const struct device *dev, 
                                    int64_t *last_change_time,
                                    uint32_t *change_count,
-                                   uint32_t *interrupt_count)
+                                   uint32_t *interrupt_count,
+                                   bool *hardware_fault)
 {
     const struct charging_status_data *data = dev->data;
     
@@ -230,6 +300,10 @@ static int charging_status_get_stats(const struct device *dev,
     
     if (interrupt_count) {
         *interrupt_count = (uint32_t)atomic_get(&data->interrupt_count);
+    }
+    
+    if (hardware_fault) {
+        *hardware_fault = (atomic_get(&data->hardware_fault) != 0);
     }
     
     return 0;
@@ -278,7 +352,8 @@ struct charging_status_driver_api {
     int (*get_stats)(const struct device *dev,
                     int64_t *last_change_time,
                     uint32_t *change_count,
-                    uint32_t *interrupt_count);
+                    uint32_t *interrupt_count,
+                    bool *hardware_fault);
 };
 
 /* 驱动API实例 */
@@ -300,10 +375,8 @@ static int charging_status_init(const struct device *dev)
     data->dev = dev;
     data->config = config;
     
-    LOG_INF("Initializing charging status driver for instance %d on pin %s.%d",
-            config->instance,
-            config->chrg_gpio.port ? config->chrg_gpio.port->name : "NULL",
-            config->chrg_gpio.pin);
+    /* 先打印简单初始化消息 */
+    LOG_INF("Initializing charging status driver instance %d", config->instance);
     
     /* 验证GPIO设备是否就绪 */
     if (!gpio_is_ready_dt(&config->chrg_gpio)) {
@@ -347,14 +420,15 @@ static int charging_status_init(const struct device *dev)
         return ret;
     }
     
-    LOG_INF("GPIO interrupt configured for bilateral edge detection on instance %d",
+    LOG_INF("GPIO interrupt configured for pin %s.%d (instance %d)",
+            config->chrg_gpio.port->name, config->chrg_gpio.pin,
             config->instance);
     
     /* 初始化防抖动工作 */
     k_work_init_delayable(&data->debounce_work, charging_status_debounce_work);
     
-    /* 初始状态读取 */
-    int initial_state = gpio_pin_get_dt(&config->chrg_gpio);
+    /* 初始状态读取 - 使用稳定读取 */
+    int initial_state = read_stable_gpio_state(&config->chrg_gpio);
     if (initial_state < 0) {
         LOG_ERR("Failed to read initial GPIO state for instance %d: %d", 
                 config->instance, initial_state);
@@ -363,13 +437,14 @@ static int charging_status_init(const struct device *dev)
     
     /* 设置初始状态 */
     atomic_set(&data->charging, (initial_state == 0));
+    data->last_stable_state = initial_state;
+    data->stable_since = k_uptime_get();
     data->last_change_time = k_uptime_get();
     
-    LOG_INF("INITIAL CHARGING STATUS for instance %d: %s (GPIO pin %s.%d state: %d)",
-            config->instance,
+    LOG_INF("INITIAL STATUS: %s (GPIO pin %s.%d state: %d, instance: %d)",
             (initial_state == 0) ? "CHARGING" : "NOT_CHARGING",
             config->chrg_gpio.port->name, config->chrg_gpio.pin,
-            initial_state);
+            initial_state, config->instance);
     
     /* 分配线程栈 */
     data->thread_stack = k_thread_stack_alloc(CONFIG_CHARGING_STATUS_THREAD_STACK_SIZE, 0);
@@ -389,15 +464,15 @@ static int charging_status_init(const struct device *dev)
                    CONFIG_CHARGING_STATUS_THREAD_PRIORITY,
                    0, K_NO_WAIT);
     
-    char thread_name[32];
-    snprintf(thread_name, sizeof(thread_name), "charging_monitor_%d", config->instance);
+    char thread_name[24];
+    snprintf(thread_name, sizeof(thread_name), "chg_mon_%d", config->instance);
     k_thread_name_set(&data->monitor_thread, thread_name);
     
-    LOG_INF("Charging status driver for instance %d initialized successfully", 
+    LOG_INF("Charging status driver initialized successfully for instance %d", 
             config->instance);
     
-    /* 初始状态检查 */
-    charging_status_debounce_work(&data->debounce_work.work);
+    /* 立即执行一次初始状态检查 */
+    k_work_schedule(&data->debounce_work, K_MSEC(10));
     
     return 0;
 }
@@ -408,8 +483,11 @@ static int charging_status_init(const struct device *dev)
         .charging = ATOMIC_INIT(0),                                           \
         .change_count = ATOMIC_INIT(0),                                       \
         .interrupt_count = ATOMIC_INIT(0),                                    \
+        .hardware_fault = ATOMIC_INIT(0),                                     \
         .last_change_time = 0,                                                \
         .last_interrupt_time = 0,                                             \
+        .last_stable_state = -1,                                              \
+        .stable_since = 0,                                                    \
         .user_callback = NULL,                                                \
         .user_callback_data = NULL,                                           \
     };                                                                        \
