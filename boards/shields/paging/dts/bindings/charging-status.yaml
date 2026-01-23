@@ -6,8 +6,6 @@ compatible: "zmk,charging-status"
 
 include:
   - name: base.yaml
-  - name: gpio.yaml
-  - name: pwm.yaml
 
 properties:
   charge-gpios:
