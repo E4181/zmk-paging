@@ -84,9 +84,12 @@
             led-gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;  // LED引脚P1.06
         };
 
-    ble_check_led {
+    aliases {
+        ble-check-led = &ble_check_led;
+    };
+
+    ble_check_led: ble_check_led {
         compatible = "gpio-leds";
-        label = "BLE_CHECK_LED";
         gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
     };
 

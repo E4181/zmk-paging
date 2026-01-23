@@ -8,6 +8,7 @@
 #include <zephyr/init.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/devicetree.h>
 
 #include <zmk/ble.h>
 #include <zmk/event_manager.h>
@@ -29,7 +30,6 @@
 #define BLE_CHECK_INIT_PRIORITY 90  /* 初始化优先级，确保在蓝牙初始化之后 */
 #endif
 
-/* LED闪烁配置 */
 #ifndef BLE_CHECK_LED_BLINK_INTERVAL_MS
 #define BLE_CHECK_LED_BLINK_INTERVAL_MS 500  /* 闪烁间隔（毫秒） */
 #endif
@@ -40,26 +40,30 @@
 /* 创建日志模块实例 */
 LOG_MODULE_REGISTER(ble_check, BLE_CHECK_LOG_LEVEL);
 
-/* 设备树节点定义 - 直接使用节点，不使用别名 */
-#define LED_NODE DT_PATH(ble_check_led)
-
-/* 检查LED设备树节点是否存在 */
-#if DT_NODE_HAS_STATUS(LED_NODE, okay)
-#define LED_DEVICE_SUPPORTED 1
+/* 设备树节点检查 - 使用 Zephyr 标准方法 */
+#if DT_NODE_EXISTS(DT_ALIAS(ble_check_led))
+#define BLE_CHECK_LED_NODE DT_ALIAS(ble_check_led)
+#define BLE_CHECK_LED_SUPPORTED 1
 #else
-#define LED_DEVICE_SUPPORTED 0
-#warning "BLE check LED device tree node not defined. LED indication will be disabled."
+/* 尝试使用不带下划线的别名（设备树兼容） */
+#if DT_NODE_EXISTS(DT_ALIAS(blecheckled))
+#define BLE_CHECK_LED_NODE DT_ALIAS(blecheckled)
+#define BLE_CHECK_LED_SUPPORTED 1
+#else
+#define BLE_CHECK_LED_SUPPORTED 0
+#endif
 #endif
 
 /* GPIO设备结构体 */
-#if LED_DEVICE_SUPPORTED
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE, gpios);
+#if BLE_CHECK_LED_SUPPORTED
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(BLE_CHECK_LED_NODE, gpios);
 #endif
 
 /* 内部状态变量 */
 static bool ble_check_initialized = false;
 static bool last_connection_state = false;
 static struct k_work_delayable led_blink_work;
+static bool led_blink_state = false;
 
 /**
  * @brief LED闪烁工作函数
@@ -74,7 +78,7 @@ static void led_blink_work_handler(struct k_work *work)
     
     if (!is_connected) {
         /* 未连接状态：切换LED状态 */
-#if LED_DEVICE_SUPPORTED
+#if BLE_CHECK_LED_SUPPORTED
         int ret = gpio_pin_toggle_dt(&led);
         if (ret < 0) {
             LOG_ERR("Failed to toggle LED: %d", ret);
@@ -85,7 +89,7 @@ static void led_blink_work_handler(struct k_work *work)
         k_work_schedule(&led_blink_work, K_MSEC(BLE_CHECK_LED_BLINK_INTERVAL_MS));
     } else {
         /* 连接状态：LED熄灭 */
-#if LED_DEVICE_SUPPORTED
+#if BLE_CHECK_LED_SUPPORTED
         /* 高电平有效，所以输出0来熄灭LED */
         int ret = gpio_pin_set_dt(&led, 0);
         if (ret < 0) {
@@ -107,7 +111,7 @@ static void update_led_indication(bool is_connected)
     if (is_connected) {
         /* 连接状态：LED熄灭 */
         k_work_cancel_delayable(&led_blink_work);
-#if LED_DEVICE_SUPPORTED
+#if BLE_CHECK_LED_SUPPORTED
         int ret = gpio_pin_set_dt(&led, 0);
         if (ret < 0) {
             LOG_ERR("Failed to set LED off: %d", ret);
@@ -116,7 +120,7 @@ static void update_led_indication(bool is_connected)
         LOG_DBG("LED: OFF (connected)");
     } else {
         /* 未连接状态：LED闪烁 */
-#if LED_DEVICE_SUPPORTED
+#if BLE_CHECK_LED_SUPPORTED
         /* 先确保LED亮起 */
         int ret = gpio_pin_set_dt(&led, 1);
         if (ret < 0) {
@@ -193,7 +197,14 @@ static int ble_check_init(void)
     /* 初始化LED闪烁工作 */
     k_work_init_delayable(&led_blink_work, led_blink_work_handler);
     
-#if LED_DEVICE_SUPPORTED
+#if BLE_CHECK_LED_SUPPORTED
+    /* 检查设备树节点信息 */
+    LOG_DBG("LED device tree node found");
+    LOG_DBG("  - Node label: %s", DT_LABEL(BLE_CHECK_LED_NODE));
+    LOG_DBG("  - GPIO port: %s", DT_PROP(BLE_CHECK_LED_NODE, gpios_controller));
+    LOG_DBG("  - GPIO pin: %d", DT_GPIO_PIN(BLE_CHECK_LED_NODE, gpios));
+    LOG_DBG("  - GPIO flags: 0x%x", DT_GPIO_FLAGS(BLE_CHECK_LED_NODE, gpios));
+    
     /* 初始化GPIO LED */
     if (!device_is_ready(led.port)) {
         LOG_ERR("LED device is not ready");
@@ -206,10 +217,19 @@ static int ble_check_init(void)
         return ret;
     }
     
-    LOG_INF("LED configured on GPIO: port=%p, pin=%d, dt_flags=0x%x", 
-            led.port, led.pin, led.dt_flags);
+    LOG_INF("LED configured on pin %d (active high)", led.pin);
 #else
-    LOG_WRN("LED device tree node not found. LED indication disabled.");
+    LOG_WRN("BLE check LED device tree node not defined. LED indication disabled.");
+    LOG_WRN("To enable LED, add the following to your device tree:");
+    LOG_WRN("  / {");
+    LOG_WRN("    aliases {");
+    LOG_WRN("      blecheckled = &ble_check_led;");
+    LOG_WRN("    };");
+    LOG_WRN("    ble_check_led: ble_check_led {");
+    LOG_WRN("      compatible = \"gpio-leds\";");
+    LOG_WRN("      gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;");
+    LOG_WRN("    };");
+    LOG_WRN("  };");
 #endif
     
     /* 获取初始连接状态 */
