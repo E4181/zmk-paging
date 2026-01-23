@@ -37,6 +37,9 @@ struct charging_status_data {
     
     /* 中断是否已启用 */
     bool interrupt_enabled;
+    
+    /* 设备指针 */
+    const struct device *dev;
 };
 
 /* 设备配置数据结构 */
@@ -56,7 +59,7 @@ static void debounce_work_handler(struct k_work *work)
 {
     struct k_work_delayable *dwork = k_work_delayable_from_work(work);
     struct charging_status_data *data = CONTAINER_OF(dwork, struct charging_status_data, debounce_work);
-    const struct device *dev = CONTAINER_OF(data, const struct device, data);
+    const struct device *dev = data->dev;
     const struct charging_status_config *config = dev->config;
     
     int pin_state = gpio_pin_get_dt(&config->chrg_gpio);
@@ -99,7 +102,7 @@ static void debounce_work_handler(struct k_work *work)
 static void chrg_gpio_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
     struct charging_status_data *data = CONTAINER_OF(cb, struct charging_status_data, gpio_cb);
-    const struct charging_status_config *config = dev->config;
+    const struct charging_status_config *config = data->dev->config;
     
     /* 禁用中断以防抖动 */
     gpio_pin_interrupt_configure_dt(&config->chrg_gpio, GPIO_INT_DISABLE);
@@ -191,6 +194,9 @@ static int charging_status_init(const struct device *dev)
     struct charging_status_data *data = dev->data;
     int ret;
     
+    /* 保存设备指针到私有数据 */
+    data->dev = dev;
+    
     /* 检查GPIO设备是否就绪 */
     if (!device_is_ready(config->chrg_gpio.port)) {
         LOG_ERR("GPIO device not ready");
@@ -198,7 +204,7 @@ static int charging_status_init(const struct device *dev)
     }
     
     /* 配置GPIO为输入模式 */
-    ret = gpio_pin_configure_dt(&config->chrg_gpio, GPIO_INPUT);
+    ret = gpio_pin_configure_dt(&config->chrg_gpio, GPIO_INPUT | GPIO_PULL_UP);
     if (ret < 0) {
         LOG_ERR("Failed to configure CHRG GPIO");
         return ret;
