@@ -121,7 +121,8 @@ static int charging_status_init(void)
     ret = gpio_pin_configure(
         chrg_gpio.port,
         chrg_gpio.pin,
-        GPIO_INPUT | GPIO_PULL_NONE);
+        GPIO_INPUT
+    );
     if (ret) {
         return ret;
     }
