@@ -21,7 +21,7 @@
 // 呼吸线程栈大小
 #define BREATH_STACK_SIZE 512
 
-LOG_MODULE_REGISTER(charging_status, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(charging_status, LOG_LEVEL_DBG);
 
 #define DT_DRV_COMPAT zmk_charging_status
 
@@ -80,6 +80,8 @@ static void debounce_handler(struct k_timer *timer) {
     new_charging = (level == 1);
 #endif
 
+    LOG_DBG("Debounced CHRG level: %d (new_charging: %d)", level, new_charging);
+
     if (new_charging != data->charging) {
         data->charging = new_charging;
         LOG_INF("Charging status changed to: %s (debounced)", data->charging ? "Charging" : "Completed");
@@ -105,6 +107,9 @@ static void charging_isr(const struct device *dev, struct gpio_callback *cb, uin
     struct charging_status_data *data = CONTAINER_OF(cb, struct charging_status_data, gpio_cb);
     const struct device *sensor = DEVICE_DT_GET(DT_DRV_INST(0));
     const struct charging_status_cfg *cfg = sensor->config;
+    int level = gpio_pin_get_dt(&cfg->gpio);
+
+    LOG_DBG("ISR triggered, raw CHRG level: %d", level);
 
     // 禁用中断以防止噪声触发
     gpio_pin_interrupt_configure_dt(&cfg->gpio, GPIO_INT_DISABLE);
@@ -171,7 +176,7 @@ static int charging_status_init(const struct device *dev) {
 #else
     data->charging = (level == 1);
 #endif
-    LOG_INF("Initial charging status: %s", data->charging ? "Charging" : "Completed");
+    LOG_INF("Initial charging status: %s (level: %d)", data->charging ? "Charging" : "Completed", level);
 
     // 初始LED状态
     if (data->charging) {
@@ -197,6 +202,8 @@ static int charging_status_sample_fetch(const struct device *dev, enum sensor_ch
 #else
     data->charging = (level == 1);
 #endif
+
+    LOG_DBG("Sample fetch CHRG level: %d", level);
 
     return 0;
 }
