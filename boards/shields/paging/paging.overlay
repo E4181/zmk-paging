@@ -77,8 +77,12 @@
     //    };
     //};
     
-    led0: led_0 {
+    aliases {
+        bluetooth_status_led = &bluetooth_status_led;
+    };
+    
+    bluetooth_status_led: bluetooth_status_led {
+        compatible = "gpio-leds";
         gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
-        label = "BLE_STATUS_LED";
     };
 };

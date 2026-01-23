@@ -42,15 +42,30 @@ endchoice
 
 endif # LVGL
 
-config CHARGING_STATUS
-    bool "TP4056 charging status driver"
+menuconfig ZMK_BLUETOOTH_STATUS
+    bool "Bluetooth connection status indicator"
     default y
-    depends on GPIO
-    select LOG
     help
-      Interrupt-based TP4056 charging detection with breathing LED indicator.
+        Enable LED indicator for Bluetooth connection status
+    
+if ZMK_BLUETOOTH_STATUS
 
-config CHARGING_STATUS_LOG_LEVEL
-    int "Charging status log level"
-    default 3
-    depends on CHARGING_STATUS
+config BLUETOOTH_STATUS_LED_PIN
+    int "GPIO pin for Bluetooth status LED"
+    default 26
+    help
+        GPIO pin number for the Bluetooth status LED (P0.26)
+
+config BLUETOOTH_STATUS_BLINK_FAST_MS
+    int "Fast blink interval (ms)"
+    default 200
+    help
+        Blink interval when Bluetooth is disconnected
+    
+config BLUETOOTH_STATUS_BLINK_SLOW_MS
+    int "Slow blink interval (ms)"
+    default 500
+    help
+        Blink interval when Bluetooth is advertising
+
+endif # ZMK_BLUETOOTH_STATUS
