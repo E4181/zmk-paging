@@ -1,0 +1,10 @@
+compatible: "zmk,charging-status"
+
+properties:
+  charge-gpios:
+    type: phandle-array
+    required: true
+
+  pwms:
+    type: phandle-array
+    required: true

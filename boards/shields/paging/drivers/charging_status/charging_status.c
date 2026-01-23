@@ -1,183 +1,121 @@
 #include <zephyr/device.h>
-#include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/pwm.h>
 #include <zephyr/kernel.h>
-#include <zephyr/sys/atomic.h>
-#include <zephyr/logging/log.h>
+#include <zephyr/devicetree.h>
 
-#include "charging_status.h"
+#define BREATH_STEPS        64
+#define BREATH_PERIOD_MS    20
+#define PWM_PERIOD_USEC     1000
 
-LOG_MODULE_REGISTER(charging_status, CONFIG_CHARGING_STATUS_LOG_LEVEL);
+/* Gamma-like 查表 */
+static const uint16_t breath_lut[BREATH_STEPS] = {
+    0,2,5,9,15,22,31,42,
+    55,70,88,109,133,160,190,223,
+    259,298,340,385,433,484,538,595,
+    655,717,781,846,911,976,1000,976,
+    911,846,781,717,655,595,538,484,
+    433,385,340,298,259,223,190,160,
+    133,109,88,70,55,42,31,22,
+    15,9,5,2
+};
 
-#define DT_DRV_COMPAT custom_charging_status
-#define NODE DT_INST(0, custom_charging_status)
+struct charging_status_config {
+    struct gpio_dt_spec charge_gpio;
+    struct pwm_dt_spec pwm;
+};
 
-#if !DT_NODE_HAS_STATUS(NODE, okay)
-#error "charging_status devicetree node missing"
-#endif
+struct charging_status_data {
+    struct k_work_delayable breath_work;
+    struct gpio_callback cb;
+    uint8_t step;
+    bool active;
+};
 
-/* GPIO definitions */
-static const struct gpio_dt_spec chrg_gpio =
-    GPIO_DT_SPEC_GET(NODE, chrg_gpios);
-
-static const struct gpio_dt_spec led_gpio =
-    GPIO_DT_SPEC_GET(NODE, led_gpios);
-
-/* Charging state */
-static atomic_t charging_state;
-
-/* GPIO interrupt callback */
-static struct gpio_callback chrg_cb;
-
-/* LED breathing work */
-static struct k_work_delayable led_work;
-
-/* breathing parameters */
-static uint8_t led_duty;
-static bool led_up;
-
-#define LED_STEP_MS 30
-#define LED_MAX     100
-
-/* ========================================================= */
-/* LED breathing worker (non-blocking)                       */
-/* ========================================================= */
-static void led_breathing_worker(struct k_work *work)
+static void breath_work_handler(struct k_work *work)
 {
-    if (!atomic_get(&charging_state)) {
-        gpio_pin_set(led_gpio.port, led_gpio.pin, 0);
+    struct charging_status_data *data =
+        CONTAINER_OF(work, struct charging_status_data, breath_work);
+
+    const struct device *dev = DEVICE_DT_INST_GET(0);
+    const struct charging_status_config *cfg = dev->config;
+
+    if (!data->active) {
+        pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, 0);
         return;
     }
 
-    gpio_pin_set(led_gpio.port, led_gpio.pin, led_duty > 50);
+    pwm_set_dt(&cfg->pwm,
+               PWM_PERIOD_USEC,
+               breath_lut[data->step]);
 
-    if (led_up) {
-        if (++led_duty >= LED_MAX) {
-            led_duty = LED_MAX;
-            led_up = false;
-        }
-    } else {
-        if (led_duty == 0) {
-            led_up = true;
-        } else {
-            led_duty--;
-        }
-    }
+    data->step = (data->step + 1) % BREATH_STEPS;
 
-    k_work_schedule(&led_work, K_MSEC(LED_STEP_MS));
+    k_work_schedule(&data->breath_work,
+                    K_MSEC(BREATH_PERIOD_MS));
 }
 
-/* ========================================================= */
-/* CHRG interrupt: sample once, then RELEASE GPIO            */
-/* ========================================================= */
-static void chrg_gpio_isr(
-    const struct device *port,
-    struct gpio_callback *cb,
-    uint32_t pins)
+static void charge_gpio_isr(const struct device *port,
+                            struct gpio_callback *cb,
+                            uint32_t pins)
 {
-    ARG_UNUSED(port);
-    ARG_UNUSED(cb);
-    ARG_UNUSED(pins);
+    struct charging_status_data *data =
+        CONTAINER_OF(cb, struct charging_status_data, cb);
 
-    /* Read RAW physical level: TP4056 -> LOW = charging */
-    int level = gpio_pin_get_raw(chrg_gpio.port, chrg_gpio.pin);
-    if (level < 0) {
-        return;
-    }
+    const struct device *dev = DEVICE_DT_INST_GET(0);
+    const struct charging_status_config *cfg = dev->config;
 
-    bool charging = (level == 0);
-    bool prev = atomic_set(&charging_state, charging);
+    bool low = (gpio_pin_get_dt(&cfg->charge_gpio) == 0);
 
-    /* CRITICAL: immediately disable interrupt to release CHRG */
-    gpio_pin_interrupt_configure(
-        chrg_gpio.port,
-        chrg_gpio.pin,
-        GPIO_INT_DISABLE
-    );
-
-    if (charging != prev) {
-        LOG_INF("Charging state: %s",
-                charging ? "CHARGING" : "NOT CHARGING");
-
-        if (charging) {
-            led_duty = 0;
-            led_up = true;
-            k_work_schedule(&led_work, K_NO_WAIT);
-        } else {
-            k_work_cancel_delayable(&led_work);
-            gpio_pin_set(led_gpio.port, led_gpio.pin, 0);
-        }
+    if (low && !data->active) {
+        data->active = true;
+        data->step = 0;
+        k_work_schedule(&data->breath_work, K_NO_WAIT);
+    } else if (!low && data->active) {
+        data->active = false;
+        k_work_cancel_delayable(&data->breath_work);
+        pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, 0);
     }
 }
 
-/* ========================================================= */
-/* Init                                                      */
-/* ========================================================= */
-static int charging_status_init(void)
+static int charging_status_init(const struct device *dev)
 {
-    int ret;
+    const struct charging_status_config *cfg = dev->config;
+    struct charging_status_data *data = dev->data;
 
-    if (!device_is_ready(chrg_gpio.port) ||
-        !device_is_ready(led_gpio.port)) {
-        return -ENODEV;
-    }
+    gpio_pin_configure_dt(&cfg->charge_gpio, GPIO_INPUT);
 
-    /* CHRG: strict high-impedance input */
-    ret = gpio_pin_configure(
-        chrg_gpio.port,
-        chrg_gpio.pin,
-        GPIO_INPUT);
-    if (ret) {
-        return ret;
-    }
+    gpio_pin_interrupt_configure_dt(
+        &cfg->charge_gpio,
+        GPIO_INT_EDGE_TO_ACTIVE | GPIO_INT_EDGE_TO_INACTIVE);
 
-    /* LED: output, default off */
-    ret = gpio_pin_configure(
-        led_gpio.port,
-        led_gpio.pin,
-        GPIO_OUTPUT_INACTIVE);
-    if (ret) {
-        return ret;
-    }
+    gpio_init_callback(&data->cb,
+                       charge_gpio_isr,
+                       BIT(cfg->charge_gpio.pin));
+    gpio_add_callback(cfg->charge_gpio.port, &data->cb);
 
-    /* Initial one-time sample (no interrupt yet) */
-    int level = gpio_pin_get_raw(chrg_gpio.port, chrg_gpio.pin);
-    bool charging = (level == 0);
-    atomic_set(&charging_state, charging);
+    data->active = false;
+    data->step = 0;
 
-    LOG_INF("Charging status init: %s",
-            charging ? "CHARGING" : "NOT CHARGING");
-
-    /* GPIO interrupt: enabled ONCE */
-    gpio_init_callback(&chrg_cb, chrg_gpio_isr, BIT(chrg_gpio.pin));
-    gpio_add_callback(chrg_gpio.port, &chrg_cb);
-
-    gpio_pin_interrupt_configure(
-        chrg_gpio.port,
-        chrg_gpio.pin,
-        GPIO_INT_EDGE_BOTH);
-
-    /* LED work */
-    k_work_init_delayable(&led_work, led_breathing_worker);
-
-    if (charging) {
-        led_duty = 0;
-        led_up = true;
-        k_work_schedule(&led_work, K_NO_WAIT);
-    }
+    k_work_init_delayable(&data->breath_work,
+                          breath_work_handler);
 
     return 0;
 }
 
-SYS_INIT(
-    charging_status_init,
-    POST_KERNEL,
-    CONFIG_KERNEL_INIT_PRIORITY_DEVICE);
+#define CHARGING_STATUS_DEFINE(inst)                      \
+static struct charging_status_data data_##inst;           \
+static const struct charging_status_config cfg_##inst = { \
+    .charge_gpio = GPIO_DT_SPEC_INST_GET(inst, charge_gpios), \
+    .pwm = PWM_DT_SPEC_INST_GET(inst),                     \
+};                                                         \
+DEVICE_DT_INST_DEFINE(inst,                                \
+    charging_status_init,                                  \
+    NULL,                                                   \
+    &data_##inst,                                          \
+    &cfg_##inst,                                           \
+    POST_KERNEL,                                           \
+    CONFIG_APPLICATION_INIT_PRIORITY,                      \
+    NULL);
 
-/* ========================================================= */
-/* Public API                                                */
-/* ========================================================= */
-bool charging_status_is_charging(void)
-{
-    return atomic_get(&charging_state);
-}
+DT_INST_FOREACH_STATUS_OKAY(CHARGING_STATUS_DEFINE)

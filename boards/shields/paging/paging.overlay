@@ -82,20 +82,16 @@
     //    gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
     //};
 
-     layer_indicator {
-        compatible = "zmk,layer-indicator";
-        log_all_transitions = <0>;
-        status = "okay";
-    };
+    //layer_indicator {
+    //    compatible = "zmk,layer-indicator";
+    //    log_all_transitions = <0>; /* 设置为1记录所有层变化，0只记录层数变化 */
+    //    max_active_layers = <10>;  /* 最大层数，应等于或大于ZMK_KEYMAP_LAYERS_LEN */
+    //};
 
-    layer_change {
-        compatible = "zmk,layer-change";
-        led-gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
-        target-layer = <2>;          /* 当激活层数为2时闪烁 */
-        blink-on-ms = <200>;
-        blink-off-ms = <200>;
-        blink-count = <5>;
-        invert-led = <0>;
+    charging_status {
+        compatible = "zmk,charging-status";
+        charge-gpios = <&gpio1 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+        pwms = <&pwm0 0 1000 PWM_POLARITY_NORMAL>;
         status = "okay";
     };
 };
