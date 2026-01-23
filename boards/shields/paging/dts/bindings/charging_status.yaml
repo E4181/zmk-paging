@@ -5,9 +5,6 @@ description: Charging Status Driver for TP4056
 
 compatible: "zmk,charging-status"
 
-include:
-  - base.yaml
-
 properties:
   chrg-gpios:
     required: true
