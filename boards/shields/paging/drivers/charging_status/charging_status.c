@@ -13,60 +13,65 @@ LOG_MODULE_REGISTER(charging_status, CONFIG_CHARGING_STATUS_LOG_LEVEL);
 #define NODE DT_INST(0, custom_charging_status)
 
 #if !DT_NODE_HAS_STATUS(NODE, okay)
-#error "charging_status devicetree node missing"
+#error "charging_status node missing in devicetree"
 #endif
 
+/* GPIO specs */
 static const struct gpio_dt_spec chrg_gpio =
     GPIO_DT_SPEC_GET(NODE, chrg_gpios);
 
 static const struct gpio_dt_spec led_gpio =
     GPIO_DT_SPEC_GET(NODE, led_gpios);
 
-static struct gpio_callback chrg_cb;
+/* Charging state */
 static atomic_t charging_state;
 
-/* ===== LED breathing control ===== */
+/* GPIO interrupt callback */
+static struct gpio_callback chrg_cb;
 
+/* LED breathing work */
 static struct k_work_delayable led_work;
-static uint8_t led_level;
-static bool led_fade_up;
 
-#define LED_STEP      5
-#define LED_PERIOD_MS 20
-#define LED_MAX       100
+/* breathing parameters */
+static uint8_t led_duty;
+static bool led_up;
 
+#define LED_STEP_MS 20
+#define LED_MAX     100
+
+/* ========================================================= */
+/* LED breathing worker (NON-BLOCKING, SAFE)                 */
+/* ========================================================= */
 static void led_breathing_worker(struct k_work *work)
 {
     if (!atomic_get(&charging_state)) {
-        gpio_pin_set_dt(&led_gpio, 0);
+        gpio_pin_set(led_gpio.port, led_gpio.pin, 0);
         return;
     }
 
-    gpio_pin_set_dt(&led_gpio, 1);
-    k_busy_wait(led_level * 50);
-    gpio_pin_set_dt(&led_gpio, 0);
-    k_busy_wait((LED_MAX - led_level) * 50);
+    /* simple logical PWM */
+    gpio_pin_set(led_gpio.port, led_gpio.pin, led_duty > 50);
 
-    if (led_fade_up) {
-        led_level += LED_STEP;
-        if (led_level >= LED_MAX) {
-            led_level = LED_MAX;
-            led_fade_up = false;
+    if (led_up) {
+        led_duty++;
+        if (led_duty >= LED_MAX) {
+            led_duty = LED_MAX;
+            led_up = false;
         }
     } else {
-        if (led_level <= LED_STEP) {
-            led_level = 0;
-            led_fade_up = true;
+        if (led_duty == 0) {
+            led_up = true;
         } else {
-            led_level -= LED_STEP;
+            led_duty--;
         }
     }
 
-    k_work_schedule(&led_work, K_MSEC(LED_PERIOD_MS));
+    k_work_schedule(&led_work, K_MSEC(LED_STEP_MS));
 }
 
-/* ===== CHRG interrupt ===== */
-
+/* ========================================================= */
+/* CHRG GPIO ISR                                             */
+/* ========================================================= */
 static void chrg_gpio_isr(
     const struct device *port,
     struct gpio_callback *cb,
@@ -76,7 +81,8 @@ static void chrg_gpio_isr(
     ARG_UNUSED(cb);
     ARG_UNUSED(pins);
 
-    int level = gpio_pin_get_dt(&chrg_gpio);
+    /* RAW physical level: TP4056 -> LOW = charging */
+    int level = gpio_pin_get_raw(chrg_gpio.port, chrg_gpio.pin);
     if (level < 0) {
         return;
     }
@@ -85,22 +91,23 @@ static void chrg_gpio_isr(
     bool prev = atomic_set(&charging_state, charging);
 
     if (charging != prev) {
-        LOG_INF("Charging state changed: %s",
+        LOG_INF("Charging state: %s",
                 charging ? "CHARGING" : "NOT CHARGING");
 
         if (charging) {
-            led_level = 0;
-            led_fade_up = true;
+            led_duty = 0;
+            led_up = true;
             k_work_schedule(&led_work, K_NO_WAIT);
         } else {
             k_work_cancel_delayable(&led_work);
-            gpio_pin_set_dt(&led_gpio, 0);
+            gpio_pin_set(led_gpio.port, led_gpio.pin, 0);
         }
     }
 }
 
-/* ===== Init ===== */
-
+/* ========================================================= */
+/* Init                                                      */
+/* ========================================================= */
 static int charging_status_init(void)
 {
     int ret;
@@ -110,31 +117,47 @@ static int charging_status_init(void)
         return -ENODEV;
     }
 
-    ret = gpio_pin_configure_dt(&chrg_gpio, GPIO_INPUT);
+    /* CHRG: strict high-impedance input, NO pull */
+    ret = gpio_pin_configure(
+        chrg_gpio.port,
+        chrg_gpio.pin,
+        GPIO_INPUT | GPIO_PULL_NONE);
     if (ret) {
         return ret;
     }
 
-    ret = gpio_pin_configure_dt(&led_gpio, GPIO_OUTPUT_INACTIVE);
+    /* LED: output, default off */
+    ret = gpio_pin_configure(
+        led_gpio.port,
+        led_gpio.pin,
+        GPIO_OUTPUT_INACTIVE);
     if (ret) {
         return ret;
     }
 
-    int level = gpio_pin_get_dt(&chrg_gpio);
-    atomic_set(&charging_state, level == 0);
+    /* Initial state */
+    int level = gpio_pin_get_raw(chrg_gpio.port, chrg_gpio.pin);
+    bool charging = (level == 0);
+    atomic_set(&charging_state, charging);
 
     LOG_INF("Charging status init: %s",
-            level == 0 ? "CHARGING" : "NOT CHARGING");
+            charging ? "CHARGING" : "NOT CHARGING");
 
+    /* GPIO interrupt */
     gpio_init_callback(&chrg_cb, chrg_gpio_isr, BIT(chrg_gpio.pin));
     gpio_add_callback(chrg_gpio.port, &chrg_cb);
 
-    gpio_pin_interrupt_configure_dt(
-        &chrg_gpio, GPIO_INT_EDGE_BOTH);
+    gpio_pin_interrupt_configure(
+        chrg_gpio.port,
+        chrg_gpio.pin,
+        GPIO_INT_EDGE_BOTH);
 
+    /* LED work */
     k_work_init_delayable(&led_work, led_breathing_worker);
 
-    if (atomic_get(&charging_state)) {
+    if (charging) {
+        led_duty = 0;
+        led_up = true;
         k_work_schedule(&led_work, K_NO_WAIT);
     }
 
@@ -144,9 +167,11 @@ static int charging_status_init(void)
 SYS_INIT(
     charging_status_init,
     POST_KERNEL,
-    CONFIG_KERNEL_INIT_PRIORITY_DEVICE
-);
+    CONFIG_KERNEL_INIT_PRIORITY_DEVICE);
 
+/* ========================================================= */
+/* Public API                                                */
+/* ========================================================= */
 bool charging_status_is_charging(void)
 {
     return atomic_get(&charging_state);
