@@ -78,7 +78,7 @@
     //};
     
     aliases {
-        bluetooth_status_led = &bluetooth_status_led;
+        bluetooth-status-led = &bluetooth_status_led;  /* 注意：使用连字符而不是下划线 */
     };
     
     bluetooth_status_led: bluetooth_status_led {
