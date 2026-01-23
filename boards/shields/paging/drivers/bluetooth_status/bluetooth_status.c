@@ -23,14 +23,16 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 /* 从设备树获取配置 */
 static const struct gpio_dt_spec bluetooth_led = GPIO_DT_SPEC_GET(BLUETOOTH_STATUS_NODE, gpios);
 
+/* 定义全局定时器 */
+static struct k_timer blink_timer;
+static struct k_timer safety_timer;
+
 /* 私有数据结构 */
 struct bluetooth_status_data {
     bool led_state;
     bool is_connected;
-    bool timer_running;
+    bool blink_timer_running;
     uint32_t last_activity_time;
-    struct k_timer safety_timer;  /* 安全定时器，每10分钟检查一次 */
-    struct k_timer blink_timer;   /* 闪烁定时器 */
 };
 
 static struct bluetooth_status_data bluetooth_data;
@@ -51,9 +53,9 @@ static int set_led_state(bool state)
 /* 停止闪烁定时器 */
 static void stop_blink_timer(void)
 {
-    if (bluetooth_data.timer_running) {
-        k_timer_stop(&bluetooth_data.blink_timer);
-        bluetooth_data.timer_running = false;
+    if (bluetooth_data.blink_timer_running) {
+        k_timer_stop(&blink_timer);
+        bluetooth_data.blink_timer_running = false;
         LOG_DBG("Blink timer stopped");
     }
 }
@@ -61,10 +63,9 @@ static void stop_blink_timer(void)
 /* 启动闪烁定时器 */
 static void start_blink_timer(void)
 {
-    if (!bluetooth_data.timer_running) {
-        k_timer_start(&bluetooth_data.blink_timer, 
-                     K_MSEC(500), K_MSEC(500));
-        bluetooth_data.timer_running = true;
+    if (!bluetooth_data.blink_timer_running) {
+        k_timer_start(&blink_timer, K_MSEC(500), K_MSEC(500));
+        bluetooth_data.blink_timer_running = true;
         LOG_DBG("Blink timer started");
     }
 }
@@ -72,6 +73,8 @@ static void start_blink_timer(void)
 /* 闪烁定时器回调 */
 static void blink_timer_handler(struct k_timer *timer)
 {
+    ARG_UNUSED(timer);
+    
     if (!bluetooth_data.is_connected) {
         set_led_state(!bluetooth_data.led_state);
     }
@@ -80,6 +83,8 @@ static void blink_timer_handler(struct k_timer *timer)
 /* 安全定时器回调 - 每10分钟检查一次，防止事件丢失 */
 static void safety_timer_handler(struct k_timer *timer)
 {
+    ARG_UNUSED(timer);
+    
     bool current_state = zmk_ble_active_profile_is_connected();
     
     /* 如果状态不一致，重新同步 */
@@ -131,10 +136,6 @@ static int bluetooth_status_event_listener(const zmk_event_t *eh)
     return 0;
 }
 
-/* 初始化定时器 */
-K_TIMER_DEFINE(bluetooth_data.blink_timer, blink_timer_handler, NULL);
-K_TIMER_DEFINE(bluetooth_data.safety_timer, safety_timer_handler, NULL);
-
 /* 初始化函数 */
 static int bluetooth_status_init(void)
 {
@@ -159,9 +160,13 @@ static int bluetooth_status_init(void)
     /* 初始化为熄灭状态 */
     gpio_pin_set_dt(&bluetooth_led, 0);
     
+    /* 初始化定时器 */
+    k_timer_init(&blink_timer, blink_timer_handler, NULL);
+    k_timer_init(&safety_timer, safety_timer_handler, NULL);
+    
     /* 初始化数据 */
     bluetooth_data.is_connected = zmk_ble_active_profile_is_connected();
-    bluetooth_data.timer_running = false;
+    bluetooth_data.blink_timer_running = false;
     bluetooth_data.led_state = false;
     bluetooth_data.last_activity_time = k_uptime_get_32();
     
@@ -176,8 +181,7 @@ static int bluetooth_status_init(void)
     }
     
     /* 启动安全定时器（每10分钟检查一次） */
-    k_timer_start(&bluetooth_data.safety_timer, 
-                  K_MINUTES(10), K_MINUTES(10));
+    k_timer_start(&safety_timer, K_MINUTES(10), K_MINUTES(10));
     
     LOG_INF("Bluetooth status indicator initialized with interrupt mode");
     return 0;

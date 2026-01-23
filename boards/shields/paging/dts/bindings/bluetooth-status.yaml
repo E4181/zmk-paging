@@ -10,7 +10,3 @@ properties:
     required: true
     type: phandle-array
     description: GPIO specifier for the status LED
-
-  label:
-    type: string
-    description: Human readable name for the device
