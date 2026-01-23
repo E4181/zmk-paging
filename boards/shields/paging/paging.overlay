@@ -77,10 +77,10 @@
     //    };
     //};
 
-    bluetooth_status: bluetooth_status {
-        compatible = "bluetooth-status";
-        gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
-    };
+    //bluetooth_status: bluetooth_status {
+    //    compatible = "bluetooth-status";
+    //    gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+    //};
 
     layer_indicator {
         compatible = "zmk,layer-indicator";
