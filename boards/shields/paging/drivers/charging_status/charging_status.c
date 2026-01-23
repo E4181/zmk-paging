@@ -5,15 +5,38 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-/* ZMK battery API */
-#include <zmk/battery.h>
-
 LOG_MODULE_REGISTER(charging_status, LOG_LEVEL_INF);
 
-/* ===== 参数 ===== */
+/* =======================
+ *  ZMK battery 访问（安全版）
+ * ======================= */
+
+/*
+ * 不 include <zmk/battery.h>，避免 shield driver 头文件不可见问题。
+ * 这里使用 extern + weak fallback 的方式。
+ */
+
+/* 正常情况下，ZMK app 层会提供这个符号 */
+extern uint8_t zmk_battery_percent(void);
+
+/*
+ * 如果未来某次配置中 battery 子系统被裁剪，
+ * 链接器找不到该符号，就会使用这个 weak 版本。
+ */
+__attribute__((weak))
+uint8_t zmk_battery_percent(void)
+{
+    return 0;
+}
+
+/* =======================
+ *  参数
+ * ======================= */
 #define DEBOUNCE_MS 50
 
-/* ===== 设备结构 ===== */
+/* =======================
+ *  设备结构
+ * ======================= */
 struct charging_status_config {
     struct gpio_dt_spec chrg;
     struct gpio_dt_spec led;
@@ -27,7 +50,9 @@ struct charging_status_data {
     bool charging;
 };
 
-/* ===== 前向声明 ===== */
+/* =======================
+ *  前向声明
+ * ======================= */
 static void chrg_isr(const struct device *dev,
                      struct gpio_callback *cb,
                      uint32_t pins);
@@ -35,31 +60,41 @@ static void chrg_isr(const struct device *dev,
 static void debounce_timer_handler(struct k_timer *timer);
 static void led_thread_fn(void *p1, void *p2, void *p3);
 
-/* ===== TP4056 + Battery 联合判定 ===== */
-static bool is_battery_present(void)
+/* =======================
+ *  充电判定逻辑（方案 A）
+ * ======================= */
+
+/*
+ * 电池是否“真实存在”
+ *
+ * 在 ZMK 中：
+ * - percent == 0 基本可以视为：
+ *   - 无电池
+ *   - ADC 未接
+ *   - 电池异常
+ */
+static bool battery_present(void)
 {
-    /*
-     * ZMK battery subsystem:
-     * - 0% 基本可以确定是“无电池 / 电池异常 / ADC 未接”
-     */
-    uint8_t percent = zmk_battery_percent();
-    return percent > 0;
+    return zmk_battery_percent() > 0;
 }
 
-static bool is_charging_valid(int chrg_level)
+/*
+ * TP4056 CHRG + Battery 联合判断
+ */
+static bool charging_is_valid(int chrg_level)
 {
-    /*
-     * TP4056:
-     * CHRG = LOW  → “正在充电”（仅在电池存在时才有意义）
-     */
-    if (!is_battery_present()) {
+    /* 没电池 → 不可能在充电 */
+    if (!battery_present()) {
         return false;
     }
 
+    /* TP4056: CHRG = LOW → 正在充电 */
     return chrg_level == 0;
 }
 
-/* ===== 中断 ===== */
+/* =======================
+ *  GPIO 中断
+ * ======================= */
 static void chrg_isr(const struct device *dev,
                      struct gpio_callback *cb,
                      uint32_t pins)
@@ -75,7 +110,9 @@ static void chrg_isr(const struct device *dev,
                   K_NO_WAIT);
 }
 
-/* ===== 消抖处理 ===== */
+/* =======================
+ *  消抖处理
+ * ======================= */
 static void debounce_timer_handler(struct k_timer *timer)
 {
     struct charging_status_data *data =
@@ -85,7 +122,7 @@ static void debounce_timer_handler(struct k_timer *timer)
     const struct charging_status_config *cfg = dev->config;
 
     int chrg_level = gpio_pin_get_dt(&cfg->chrg);
-    bool charging = is_charging_valid(chrg_level);
+    bool charging = charging_is_valid(chrg_level);
 
     if (charging == data->charging) {
         return;
@@ -106,7 +143,9 @@ static void debounce_timer_handler(struct k_timer *timer)
     }
 }
 
-/* ===== LED 呼吸线程 ===== */
+/* =======================
+ *  LED 呼吸线程
+ * ======================= */
 K_THREAD_STACK_DEFINE(led_stack, 512);
 
 static void led_thread_fn(void *p1, void *p2, void *p3)
@@ -123,17 +162,17 @@ static void led_thread_fn(void *p1, void *p2, void *p3)
             k_thread_suspend(k_current_get());
         }
 
-        /* 简单呼吸（非 PWM，逻辑呼吸） */
-        for (int i = 0; i < 10 && data->charging; i++) {
-            gpio_pin_set_dt(&cfg->led, 1);
-            k_sleep(K_MSEC(150));
-            gpio_pin_set_dt(&cfg->led, 0);
-            k_sleep(K_MSEC(150));
-        }
+        /* 简单稳定的“逻辑呼吸” */
+        gpio_pin_set_dt(&cfg->led, 1);
+        k_sleep(K_MSEC(150));
+        gpio_pin_set_dt(&cfg->led, 0);
+        k_sleep(K_MSEC(150));
     }
 }
 
-/* ===== 初始化 ===== */
+/* =======================
+ *  初始化
+ * ======================= */
 static int charging_status_init(const struct device *dev)
 {
     const struct charging_status_config *cfg = dev->config;
@@ -145,7 +184,7 @@ static int charging_status_init(const struct device *dev)
         return -ENODEV;
     }
 
-    /* CHRG: 只读 + 上拉（如果你有外部上拉，可去掉 GPIO_PULL_UP） */
+    /* CHRG：只读 + 上拉（若你板上已有外部上拉，可去掉 GPIO_PULL_UP） */
     ret = gpio_pin_configure_dt(&cfg->chrg,
                                 GPIO_INPUT | GPIO_PULL_UP);
     if (ret) {
@@ -173,9 +212,9 @@ static int charging_status_init(const struct device *dev)
                  debounce_timer_handler,
                  NULL);
 
-    /* ===== 初始状态采样 ===== */
+    /* 初始采样 */
     int chrg_level = gpio_pin_get_dt(&cfg->chrg);
-    data->charging = is_charging_valid(chrg_level);
+    data->charging = charging_is_valid(chrg_level);
 
     LOG_INF("Charging status driver initialized");
     LOG_INF("  CHRG raw level at boot: %d", chrg_level);
@@ -183,7 +222,6 @@ static int charging_status_init(const struct device *dev)
     LOG_INF("  Charging at boot: %s",
             data->charging ? "YES" : "NO");
 
-    /* LED 线程 */
     k_thread_create(&data->led_thread,
                     led_stack,
                     K_THREAD_STACK_SIZEOF(led_stack),
@@ -202,7 +240,9 @@ static int charging_status_init(const struct device *dev)
     return 0;
 }
 
-/* ===== 设备实例 ===== */
+/* =======================
+ *  设备实例
+ * ======================= */
 static struct charging_status_data charging_status_data;
 
 static const struct charging_status_config charging_status_config = {
