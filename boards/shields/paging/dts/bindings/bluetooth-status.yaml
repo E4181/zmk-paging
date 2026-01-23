@@ -14,15 +14,3 @@ properties:
   label:
     type: string
     description: Human readable name for the device
-
-  bluetooth-connection-interval-ms:
-    type: int
-    required: false
-    default: 100
-    description: Interval in milliseconds for checking Bluetooth connection status
-
-  led-blink-interval-ms:
-    type: int
-    required: false
-    default: 500
-    description: Blink interval in milliseconds when Bluetooth is disconnected
