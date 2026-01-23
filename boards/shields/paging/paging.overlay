@@ -90,7 +90,7 @@
 
     charging_status {
         compatible = "zmk,charging-status";
-        charge-gpios = <&gpio1 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+        charge-gpios = <&gpio1 9 (GPIO_ACTIVE_HIGH)>;
         pwms = <&pwm0 0 1000 PWM_POLARITY_NORMAL>;
         status = "okay";
     };
