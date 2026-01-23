@@ -9,16 +9,10 @@
 #include <zephyr/sys/__assert.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(charging_status, CONFIG_CHARGING_STATUS_LOG_LEVEL);
+/* 定义日志级别 */
+#define CHARGING_STATUS_LOG_LEVEL 3 /* LOG_LEVEL_INF */
 
-/* 直接在驱动文件中定义Kconfig宏 */
-#ifndef CONFIG_CHARGING_STATUS_ENABLE
-#define CONFIG_CHARGING_STATUS_ENABLE 1
-#endif
-
-#ifndef CONFIG_CHARGING_STATUS_LOG_LEVEL
-#define CONFIG_CHARGING_STATUS_LOG_LEVEL 2
-#endif
+LOG_MODULE_REGISTER(charging_status, CHARGING_STATUS_LOG_LEVEL);
 
 /* 充电状态枚举 */
 enum charging_status_state {
@@ -115,7 +109,7 @@ static void chrg_gpio_callback(const struct device *dev, struct gpio_callback *c
 }
 
 /* 获取当前充电状态 */
-enum charging_status_state charging_status_get_state(const struct device *dev)
+static enum charging_status_state charging_status_get_state(const struct device *dev)
 {
     struct charging_status_data *data = dev->data;
     
@@ -123,7 +117,7 @@ enum charging_status_state charging_status_get_state(const struct device *dev)
 }
 
 /* 设置状态变化回调函数 */
-int charging_status_set_callback(const struct device *dev, 
+static int charging_status_set_callback(const struct device *dev, 
                                 void (*callback)(const struct device *dev, 
                                                 enum charging_status_state state))
 {
@@ -134,7 +128,7 @@ int charging_status_set_callback(const struct device *dev,
 }
 
 /* 启用/禁用中断 */
-int charging_status_set_interrupt(const struct device *dev, bool enable)
+static int charging_status_set_interrupt(const struct device *dev, bool enable)
 {
     struct charging_status_data *data = dev->data;
     const struct charging_status_config *config = dev->config;
@@ -154,7 +148,7 @@ int charging_status_set_interrupt(const struct device *dev, bool enable)
 }
 
 /* 手动触发一次状态读取（用于轮询模式） */
-int charging_status_update(const struct device *dev)
+static int charging_status_update(const struct device *dev)
 {
     struct charging_status_data *data = dev->data;
     const struct charging_status_config *config = dev->config;
