@@ -41,3 +41,33 @@ choice LV_COLOR_DEPTH
 endchoice
 
 endif # LVGL
+
+
+menuconfig CHARGING_STATUS
+    bool "Charging Status Driver"
+    depends on GPIO
+    help
+      Enable driver for TP4056 charging status detection.
+
+if CHARGING_STATUS
+
+config CHARGING_STATUS_INIT_PRIORITY
+    int "Charging Status driver initialization priority"
+    default 90
+    range 0 99
+    help
+      Initialization priority for charging status driver.
+
+config CHARGING_STATUS_THREAD_STACK_SIZE
+    int "Charging status thread stack size"
+    default 512
+    help
+      Stack size for charging status monitoring thread.
+
+config CHARGING_STATUS_THREAD_PRIORITY
+    int "Charging status thread priority"
+    default 10
+    help
+      Priority for charging status monitoring thread.
+
+endif # CHARGING_STATUS

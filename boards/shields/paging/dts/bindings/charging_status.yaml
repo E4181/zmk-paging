@@ -1,0 +1,21 @@
+# Copyright (c) 2024
+# SPDX-License-Identifier: MIT
+
+description: Charging Status Driver for TP4056
+
+compatible: "zmk,charging-status"
+
+include:
+  - base.yaml
+
+properties:
+  chrg-gpios:
+    required: true
+    type: phandle-array
+    description: GPIO pin connected to TP4056 CHRG pin
+
+  status-interval-ms:
+    required: false
+    type: int
+    default: 1000
+    description: Status polling interval in milliseconds

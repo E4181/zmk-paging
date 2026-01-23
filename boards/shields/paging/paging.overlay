@@ -70,10 +70,16 @@
         triggers-per-rotation = <10>;
     };
 
-    backlight: pwmleds {
-        compatible = "pwm-leds";
-        pwm_led_0 {
-            pwms = <&pwm0 0 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
-        };
+    //backlight: pwmleds {
+    //    compatible = "pwm-leds";
+    //    pwm_led_0 {
+    //        pwms = <&pwm0 0 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
+    //    };
+    //};
+    
+    charging_status: charging_status {
+        compatible = "zmk,charging-status";
+        chrg-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;  // P1.09 with hardware pull-up
+        status-interval-ms = <500>;  // Optional: polling interval
     };
 };
