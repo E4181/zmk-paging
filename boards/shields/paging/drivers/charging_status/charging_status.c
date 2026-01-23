@@ -247,11 +247,13 @@ static int charging_status_init(const struct device *dev)
 }
 
 /* 设备API结构体 */
-static const struct charging_status_driver_api charging_status_api = {
-    .get_state = charging_status_get_state,
-    .set_callback = charging_status_set_callback,
-    .set_interrupt = charging_status_set_interrupt,
-    .update = charging_status_update,
+struct charging_status_driver_api {
+    enum charging_status_state (*get_state)(const struct device *dev);
+    int (*set_callback)(const struct device *dev, 
+                       void (*callback)(const struct device *dev, 
+                                       enum charging_status_state state));
+    int (*set_interrupt)(const struct device *dev, bool enable);
+    int (*update)(const struct device *dev);
 };
 
 /* 从设备树实例化设备 */
@@ -262,8 +264,15 @@ static const struct charging_status_driver_api charging_status_api = {
                                                                              \
     static const struct charging_status_config charging_status_config_##inst = { \
         .chrg_gpio = GPIO_DT_SPEC_INST_GET(inst, chrg_gpios),               \
-        .active_low = DT_INST_PROP(inst, status_active_low),                 \
+        .active_low = DT_INST_PROP_OR(inst, status_active_low, 1),           \
         .debounce_ms = DT_INST_PROP_OR(inst, debounce_ms, 50),               \
+    };                                                                       \
+                                                                             \
+    static struct charging_status_driver_api charging_status_api_##inst = {  \
+        .get_state = charging_status_get_state,                              \
+        .set_callback = charging_status_set_callback,                        \
+        .set_interrupt = charging_status_set_interrupt,                      \
+        .update = charging_status_update,                                    \
     };                                                                       \
                                                                              \
     DEVICE_DT_INST_DEFINE(inst,                                              \
@@ -273,7 +282,7 @@ static const struct charging_status_driver_api charging_status_api = {
                          &charging_status_config_##inst,                     \
                          POST_KERNEL,                                        \
                          CONFIG_APPLICATION_INIT_PRIORITY,                   \
-                         &charging_status_api);
+                         &charging_status_api_##inst);
 
 /* 自动初始化所有匹配的设备树实例 */
 DT_INST_FOREACH_STATUS_OKAY(CHARGING_STATUS_DEVICE_INIT)

@@ -1,18 +1,21 @@
-# Copyright (c) 2024
-# SPDX-License-Identifier: MIT
-
-description: Charging Status Driver for TP4056
+# charging_status.yaml
+description: TP4056 Charging Status Monitor
 
 compatible: "zmk,charging-status"
 
 properties:
   chrg-gpios:
-    required: true
     type: phandle-array
     description: GPIO pin connected to TP4056 CHRG pin
 
-  status-interval-ms:
-    required: false
+  status-active-low:
     type: int
-    default: 1000
-    description: Status polling interval in milliseconds
+    description: >
+      If 1, active low (CHRG=0 means charging).
+      TP4056 CHRG is open-drain and active low.
+    default: 1
+
+  debounce-ms:
+    type: int
+    description: Debounce time in milliseconds
+    default: 50
