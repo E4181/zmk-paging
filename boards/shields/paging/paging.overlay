@@ -79,7 +79,9 @@
     
     charging_status: charging_status {
         compatible = "zmk,charging-status";
-        chrg-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;  // P1.09 with hardware pull-up
-        status-interval-ms = <500>;  // Optional: polling interval
+        chrg-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+        status-active-low = <1>;
+        label = "TP4056 Charging Status";
+        debounce-ms = <50>;
     };
 };
