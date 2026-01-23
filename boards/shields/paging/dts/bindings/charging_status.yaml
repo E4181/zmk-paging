@@ -1,21 +1,11 @@
-# charging_status.yaml
-description: TP4056 Charging Status Monitor
+description: Charging status sensor for TP4056 CHRG pin
 
 compatible: "zmk,charging-status"
 
+include: sensor-device.yaml
+
 properties:
-  chrg-gpios:
+  gpios:
     type: phandle-array
-    description: GPIO pin connected to TP4056 CHRG pin
-
-  status-active-low:
-    type: int
-    description: >
-      If 1, active low (CHRG=0 means charging).
-      TP4056 CHRG is open-drain and active low.
-    default: 1
-
-  debounce-ms:
-    type: int
-    description: Debounce time in milliseconds
-    default: 50
+    required: true
+    description: GPIO pin connected to TP4056 CHRG (e.g., P1.09 on nRF52840).

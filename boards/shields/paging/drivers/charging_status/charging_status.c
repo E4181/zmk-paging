@@ -1,316 +1,147 @@
-/*
- * Copyright (c) 2024
- * Charging Status Driver for TP4056
- */
-
-#include <zephyr/kernel.h>
 #include <zephyr/device.h>
+#include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/gpio.h>
-#include <zephyr/sys/__assert.h>
 #include <zephyr/logging/log.h>
 
-/* 定义日志级别 */
-#define CHARGING_STATUS_LOG_LEVEL 3 /* LOG_LEVEL_INF */
+// 在驱动文件中以宏定义Kconfig配置，默认低电平表示充电中
+#ifndef CONFIG_CHARGING_STATUS_ACTIVE_LOW
+#define CONFIG_CHARGING_STATUS_ACTIVE_LOW 1
+#endif
 
-LOG_MODULE_REGISTER(charging_status, CHARGING_STATUS_LOG_LEVEL);
+LOG_MODULE_REGISTER(charging_status, LOG_LEVEL_INF);
 
-/* 充电状态枚举 */
-enum charging_status_state {
-    CHARGING_STATUS_NOT_CHARGING = 0,
-    CHARGING_STATUS_CHARGING,
-    CHARGING_STATUS_UNKNOWN
-};
+#define DT_DRV_COMPAT zmk_charging_status
 
-/* 设备私有数据结构 */
 struct charging_status_data {
-    /* GPIO回调结构 */
+    bool charging;
     struct gpio_callback gpio_cb;
-    
-    /* 状态变化回调函数 */
-    void (*status_changed_cb)(const struct device *dev, enum charging_status_state state);
-    
-    /* 防抖工作队列 */
-    struct k_work_delayable debounce_work;
-    
-    /* 当前状态 */
-    enum charging_status_state current_state;
-    
-    /* 中断是否已启用 */
-    bool interrupt_enabled;
-    
-    /* 设备指针 */
-    const struct device *dev;
+    const struct sensor_trigger *trig_handler;
+    sensor_trigger_handler_t handler;
 };
 
-/* 设备配置数据结构 */
-struct charging_status_config {
-    /* GPIO规格 */
-    struct gpio_dt_spec chrg_gpio;
-    
-    /* 是否低电平有效 */
-    uint8_t active_low;
-    
-    /* 防抖时间（毫秒） */
-    uint32_t debounce_ms;
+struct charging_status_cfg {
+    struct gpio_dt_spec gpio;
 };
 
-/* 防抖工作处理函数 */
-static void debounce_work_handler(struct k_work *work)
-{
-    struct k_work_delayable *dwork = k_work_delayable_from_work(work);
-    struct charging_status_data *data = CONTAINER_OF(dwork, struct charging_status_data, debounce_work);
-    const struct device *dev = data->dev;
-    const struct charging_status_config *config = dev->config;
-    
-    int pin_state = gpio_pin_get_dt(&config->chrg_gpio);
-    
-    if (pin_state < 0) {
-        LOG_ERR("Failed to read CHRG pin");
-        return;
-    }
-    
-    LOG_INF("CHRG pin level: %d (active_low=%d)", pin_state, config->active_low);
-    
-    /* 根据active_low配置转换状态 */
-    bool is_charging;
-    if (config->active_low == 1) {
-        is_charging = (pin_state == 0);
-    } else {
-        is_charging = (pin_state == 1);
-    }
-    
-    enum charging_status_state new_state = is_charging ? 
-        CHARGING_STATUS_CHARGING : CHARGING_STATUS_NOT_CHARGING;
-    
-    LOG_INF("Charging state: %s", 
-            new_state == CHARGING_STATUS_CHARGING ? "CHARGING" : "NOT_CHARGING");
-    
-    /* 状态变化时调用回调 */
-    if (new_state != data->current_state) {
-        LOG_INF("Charging status changed from %s to %s", 
-                data->current_state == CHARGING_STATUS_CHARGING ? "CHARGING" : "NOT_CHARGING",
-                new_state == CHARGING_STATUS_CHARGING ? "CHARGING" : "NOT_CHARGING");
-        
-        data->current_state = new_state;
-        
-        if (data->status_changed_cb != NULL) {
-            data->status_changed_cb(dev, new_state);
-        }
-    }
-    
-    /* 重新启用中断 */
-    if (data->interrupt_enabled) {
-        gpio_pin_interrupt_configure_dt(&config->chrg_gpio, GPIO_INT_EDGE_BOTH);
-    }
-}
-
-/* GPIO中断回调函数 */
-static void chrg_gpio_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
-{
+static void charging_isr(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
     struct charging_status_data *data = CONTAINER_OF(cb, struct charging_status_data, gpio_cb);
-    const struct charging_status_config *config = data->dev->config;
-    
-    LOG_INF("CHRG pin interrupt triggered");
-    
-    /* 禁用中断以防抖动 */
-    gpio_pin_interrupt_configure_dt(&config->chrg_gpio, GPIO_INT_DISABLE);
-    
-    /* 调度防抖工作 */
-    k_work_reschedule(&data->debounce_work, K_MSEC(config->debounce_ms));
-}
+    const struct device *sensor = DEVICE_DT_GET(DT_DRV_INST(0));
+    const struct charging_status_cfg *cfg = sensor->config;
+    int level = gpio_pin_get_dt(&cfg->gpio);
+    bool new_charging;
 
-/* 获取当前充电状态 - 使用__attribute__((used))避免未使用警告 */
-static enum charging_status_state __attribute__((used)) charging_status_get_state(const struct device *dev)
-{
-    struct charging_status_data *data = dev->data;
-    
-    return data->current_state;
-}
+#if CONFIG_CHARGING_STATUS_ACTIVE_LOW
+    new_charging = (level == 0);
+#else
+    new_charging = (level == 1);
+#endif
 
-/* 设置状态变化回调函数 - 使用__attribute__((used))避免未使用警告 */
-static int __attribute__((used)) charging_status_set_callback(const struct device *dev, 
-                                void (*callback)(const struct device *dev, 
-                                                enum charging_status_state state))
-{
-    struct charging_status_data *data = dev->data;
-    
-    data->status_changed_cb = callback;
-    return 0;
-}
+    if (new_charging != data->charging) {
+        data->charging = new_charging;
+        LOG_INF("Charging status changed to: %s", data->charging ? "Charging" : "Completed");
 
-/* 启用/禁用中断 */
-static int charging_status_set_interrupt(const struct device *dev, bool enable)
-{
-    struct charging_status_data *data = dev->data;
-    const struct charging_status_config *config = dev->config;
-    int ret = 0;
-    
-    if (enable && !data->interrupt_enabled) {
-        ret = gpio_pin_interrupt_configure_dt(&config->chrg_gpio, GPIO_INT_EDGE_BOTH);
-        if (ret == 0) {
-            data->interrupt_enabled = true;
-            LOG_INF("CHRG interrupt enabled");
-        } else {
-            LOG_ERR("Failed to enable CHRG interrupt: %d", ret);
-        }
-    } else if (!enable && data->interrupt_enabled) {
-        ret = gpio_pin_interrupt_configure_dt(&config->chrg_gpio, GPIO_INT_DISABLE);
-        data->interrupt_enabled = false;
-        LOG_INF("CHRG interrupt disabled");
-    }
-    
-    return ret;
-}
-
-/* 手动触发一次状态读取（用于轮询模式） */
-static int charging_status_update(const struct device *dev)
-{
-    struct charging_status_data *data = dev->data;
-    const struct charging_status_config *config = dev->config;
-    
-    int pin_state = gpio_pin_get_dt(&config->chrg_gpio);
-    if (pin_state < 0) {
-        LOG_ERR("Failed to read CHRG pin: %d", pin_state);
-        return pin_state;
-    }
-    
-    LOG_INF("CHRG pin level: %d (active_low=%d)", pin_state, config->active_low);
-    
-    /* 根据active_low配置转换状态 */
-    bool is_charging;
-    if (config->active_low == 1) {
-        is_charging = (pin_state == 0);
-    } else {
-        is_charging = (pin_state == 1);
-    }
-    
-    enum charging_status_state new_state = is_charging ? 
-        CHARGING_STATUS_CHARGING : CHARGING_STATUS_NOT_CHARGING;
-    
-    LOG_INF("Charging state: %s", 
-            new_state == CHARGING_STATUS_CHARGING ? "CHARGING" : "NOT_CHARGING");
-    
-    /* 状态变化时调用回调 */
-    if (new_state != data->current_state) {
-        LOG_INF("Charging status changed from %s to %s", 
-                data->current_state == CHARGING_STATUS_CHARGING ? "CHARGING" : "NOT_CHARGING",
-                new_state == CHARGING_STATUS_CHARGING ? "CHARGING" : "NOT_CHARGING");
-        
-        data->current_state = new_state;
-        
-        if (data->status_changed_cb != NULL) {
-            data->status_changed_cb(dev, new_state);
+        if (data->handler) {
+            data->handler(sensor, data->trig_handler);
         }
     }
-    
-    return 0;
 }
 
-/* 设备初始化 - 使用__attribute__((used))避免未使用警告 */
-static int __attribute__((used)) charging_status_init(const struct device *dev)
-{
-    const struct charging_status_config *config = dev->config;
+static int charging_status_init(const struct device *dev) {
     struct charging_status_data *data = dev->data;
+    const struct charging_status_cfg *cfg = dev->config;
     int ret;
-    
-    LOG_INF("Charging status driver initializing...");
-    
-    /* 保存设备指针到私有数据 */
-    data->dev = dev;
-    
-    /* 检查GPIO设备是否就绪 */
-    if (!device_is_ready(config->chrg_gpio.port)) {
+
+    if (!gpio_is_ready_dt(&cfg->gpio)) {
         LOG_ERR("GPIO device not ready");
         return -ENODEV;
     }
-    
-    LOG_INF("GPIO device ready: port=%s, pin=%d", 
-            config->chrg_gpio.port->name, config->chrg_gpio.pin);
-    
-    /* 配置GPIO为输入模式 */
-    ret = gpio_pin_configure_dt(&config->chrg_gpio, GPIO_INPUT | GPIO_PULL_UP);
+
+    ret = gpio_pin_configure_dt(&cfg->gpio, GPIO_INPUT | GPIO_PULL_UP);
     if (ret < 0) {
-        LOG_ERR("Failed to configure CHRG GPIO: %d", ret);
+        LOG_ERR("Failed to configure GPIO: %d", ret);
         return ret;
     }
-    
-    LOG_INF("GPIO configured as INPUT with PULL_UP");
-    
-    /* 初始化GPIO回调 */
-    gpio_init_callback(&data->gpio_cb, chrg_gpio_callback, BIT(config->chrg_gpio.pin));
-    
-    /* 添加回调 */
-    ret = gpio_add_callback(config->chrg_gpio.port, &data->gpio_cb);
+
+    ret = gpio_pin_interrupt_configure_dt(&cfg->gpio, GPIO_INT_EDGE_BOTH);
     if (ret < 0) {
-        LOG_ERR("Failed to add GPIO callback: %d", ret);
+        LOG_ERR("Failed to configure interrupt: %d", ret);
         return ret;
     }
-    
-    LOG_INF("GPIO callback added");
-    
-    /* 初始化防抖工作队列 */
-    k_work_init_delayable(&data->debounce_work, debounce_work_handler);
-    
-    /* 初始化状态 */
-    data->current_state = CHARGING_STATUS_UNKNOWN;
-    data->status_changed_cb = NULL;
-    data->interrupt_enabled = false;
-    
-    /* 读取初始状态 */
-    ret = charging_status_update(dev);
+
+    gpio_init_callback(&data->gpio_cb, charging_isr, BIT(cfg->gpio.pin));
+    ret = gpio_add_callback(cfg->gpio.port, &data->gpio_cb);
     if (ret < 0) {
-        LOG_ERR("Failed to read initial charging status: %d", ret);
+        LOG_ERR("Failed to add callback: %d", ret);
         return ret;
     }
-    
-    /* 启用中断 */
-    ret = charging_status_set_interrupt(dev, true);
-    if (ret < 0) {
-        LOG_ERR("Failed to enable interrupt: %d", ret);
-        return ret;
-    }
-    
-    LOG_INF("Charging status driver initialized successfully");
+
+    // 初始读取并日志
+    int level = gpio_pin_get_dt(&cfg->gpio);
+#if CONFIG_CHARGING_STATUS_ACTIVE_LOW
+    data->charging = (level == 0);
+#else
+    data->charging = (level == 1);
+#endif
+    LOG_INF("Initial charging status: %s", data->charging ? "Charging" : "Completed");
+
     return 0;
 }
 
-/* 设备API结构体 */
-struct charging_status_driver_api {
-    enum charging_status_state (*get_state)(const struct device *dev);
-    int (*set_callback)(const struct device *dev, 
-                       void (*callback)(const struct device *dev, 
-                                       enum charging_status_state state));
-    int (*set_interrupt)(const struct device *dev, bool enable);
-    int (*update)(const struct device *dev);
+static int charging_status_sample_fetch(const struct device *dev) {
+    struct charging_status_data *data = dev->data;
+    const struct charging_status_cfg *cfg = dev->config;
+    int level = gpio_pin_get_dt(&cfg->gpio);
+
+#if CONFIG_CHARGING_STATUS_ACTIVE_LOW
+    data->charging = (level == 0);
+#else
+    data->charging = (level == 1);
+#endif
+
+    return 0;
+}
+
+static int charging_status_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val) {
+    struct charging_status_data *data = dev->data;
+
+    if (chan != SENSOR_CHAN_ALL) {
+        return -ENOTSUP;
+    }
+
+    val->val1 = data->charging ? 1 : 0;
+    val->val2 = 0;
+
+    return 0;
+}
+
+static int charging_status_trigger_set(const struct device *dev, const struct sensor_trigger *trig, sensor_trigger_handler_t handler) {
+    struct charging_status_data *data = dev->data;
+
+    if (trig->type != SENSOR_TRIG_DELTA) {
+        return -ENOTSUP;
+    }
+
+    data->trig_handler = trig;
+    data->handler = handler;
+
+    return 0;
+}
+
+static const struct sensor_driver_api charging_status_api = {
+    .sample_fetch = charging_status_sample_fetch,
+    .channel_get = charging_status_channel_get,
+    .trigger_set = charging_status_trigger_set,
 };
 
-/* 从设备树实例化设备 */
-#define CHARGING_STATUS_DEVICE_INIT(inst)                                     \
-    static struct charging_status_data charging_status_data_##inst = {        \
-        .gpio_cb = GPIO_CALLBACK_INIT,                                       \
-    };                                                                       \
-                                                                             \
-    static const struct charging_status_config charging_status_config_##inst = { \
-        .chrg_gpio = GPIO_DT_SPEC_INST_GET(inst, chrg_gpios),               \
-        .active_low = DT_INST_PROP_OR(inst, status_active_low, 1),           \
-        .debounce_ms = DT_INST_PROP_OR(inst, debounce_ms, 50),               \
-    };                                                                       \
-                                                                             \
-    static struct charging_status_driver_api charging_status_api_##inst = {  \
-        .get_state = charging_status_get_state,                              \
-        .set_callback = charging_status_set_callback,                        \
-        .set_interrupt = charging_status_set_interrupt,                      \
-        .update = charging_status_update,                                    \
-    };                                                                       \
-                                                                             \
-    DEVICE_DT_INST_DEFINE(inst,                                              \
-                         charging_status_init,                               \
-                         NULL,                                               \
-                         &charging_status_data_##inst,                       \
-                         &charging_status_config_##inst,                     \
-                         POST_KERNEL,                                        \
-                         CONFIG_APPLICATION_INIT_PRIORITY,                   \
-                         &charging_status_api_##inst);
+#define CHARGING_STATUS_INST(inst)                                             \
+    static struct charging_status_data charging_status_data_##inst;            \
+    static const struct charging_status_cfg charging_status_cfg_##inst = {     \
+        .gpio = GPIO_DT_SPEC_INST_GET(inst, gpios),                            \
+    };                                                                         \
+    SENSOR_DEVICE_DT_INST_DEFINE(inst, charging_status_init, NULL,             \
+                                 &charging_status_data_##inst,                 \
+                                 &charging_status_cfg_##inst, POST_KERNEL,     \
+                                 CONFIG_SENSOR_INIT_PRIORITY,                  \
+                                 &charging_status_api);
 
-/* 自动初始化所有匹配的设备树实例 */
-DT_INST_FOREACH_STATUS_OKAY(CHARGING_STATUS_DEVICE_INIT)
+DT_INST_FOREACH_STATUS_OKAY(CHARGING_STATUS_INST)

@@ -78,9 +78,8 @@
     //};
     
     charging_status {
-        compatible = "zmk,charging-status";
-        chrg-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
-        status-active-low = <1>;
-        debounce-ms = <50>;
-    };
+            compatible = "zmk,charging-status";
+            status = "okay";
+            gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;  // nRF52840 P1.09，默认active-low
+        };
 };
