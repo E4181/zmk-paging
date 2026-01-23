@@ -10,8 +10,10 @@
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
 #include <zmk/keymap.h>
+#include <stdio.h> 
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/event_manager.h>
+#include "layer_indicator.h"
 
 LOG_MODULE_REGISTER(layer_indicator, CONFIG_ZMK_LOG_LEVEL);
 
