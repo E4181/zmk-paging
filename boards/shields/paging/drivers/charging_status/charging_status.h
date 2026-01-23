@@ -44,6 +44,19 @@ int charging_status_register_callback(const struct device *dev,
 int charging_status_get_last_change(const struct device *dev,
                                   int64_t *timestamp);
 
+/**
+ * @brief 获取驱动统计信息
+ * @param dev 充电状态设备指针
+ * @param last_change_time 最后状态变化时间
+ * @param change_count 状态变化次数
+ * @param interrupt_count 中断触发次数
+ * @return 0表示成功，负数表示错误码
+ */
+int charging_status_get_stats(const struct device *dev,
+                            int64_t *last_change_time,
+                            uint32_t *change_count,
+                            uint32_t *interrupt_count);
+
 #ifdef __cplusplus
 }
 #endif
