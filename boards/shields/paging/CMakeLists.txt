@@ -8,6 +8,11 @@ target_sources(app PRIVATE
 #zephyr_include_directories(dts/bindings)
 
 zephyr_library()
+
+zephyr_library_include_directories(
+    ${ZMK_DIR}/app/include
+)
+
 zephyr_library_sources(
     #drivers/charging_status/charging_status.c
     drivers/bluetooth_led/bluetooth_led.c
