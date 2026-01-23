@@ -3,14 +3,23 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/util.h>
 
 // 默认低电平表示充电中
 #ifndef CONFIG_CHARGING_STATUS_ACTIVE_LOW
 #define CONFIG_CHARGING_STATUS_ACTIVE_LOW 1
 #endif
 
-// 去抖动延迟（毫秒），可调整以平衡准确性和及时性
+// 去抖动延迟（毫秒）
 #define DEBOUNCE_MS 10
+
+// 呼吸灯参数：周期2.56ms (~390Hz)，分辨率256步，每步10us
+#define PWM_PERIOD_US 2560
+#define PWM_STEP_US 10
+#define BREATH_STEP_MS 5  // 每步渐变延时，控制呼吸速度
+
+// 呼吸线程栈大小
+#define BREATH_STACK_SIZE 512
 
 LOG_MODULE_REGISTER(charging_status, LOG_LEVEL_INF);
 
@@ -22,11 +31,41 @@ struct charging_status_data {
     const struct sensor_trigger *trig_handler;
     sensor_trigger_handler_t handler;
     struct k_timer debounce_timer;
+    struct k_thread breath_thread_data;
+    k_tid_t breath_tid;
+    K_THREAD_STACK_MEMBER(breath_stack, BREATH_STACK_SIZE);
 };
 
 struct charging_status_cfg {
-    struct gpio_dt_spec gpio;
+    struct gpio_dt_spec gpio;  // CHRG GPIO
+    struct gpio_dt_spec led;   // LED GPIO
 };
+
+static void breath_led_thread(void *p1, void *p2, void *p3) {
+    const struct device *dev = (const struct device *)p1;
+    const struct charging_status_cfg *cfg = dev->config;
+
+    while (1) {
+        // 渐亮
+        for (int brightness = 0; brightness <= 255; brightness++) {
+            int on_time = brightness * PWM_STEP_US;
+            gpio_pin_set_dt(&cfg->led, 1);  // 高电平点亮（假设active-high；若low，翻转）
+            k_busy_wait(on_time);
+            gpio_pin_set_dt(&cfg->led, 0);
+            k_busy_wait(PWM_PERIOD_US - on_time);
+            k_msleep(BREATH_STEP_MS);  // 渐变速度
+        }
+        // 渐暗
+        for (int brightness = 255; brightness >= 0; brightness--) {
+            int on_time = brightness * PWM_STEP_US;
+            gpio_pin_set_dt(&cfg->led, 1);
+            k_busy_wait(on_time);
+            gpio_pin_set_dt(&cfg->led, 0);
+            k_busy_wait(PWM_PERIOD_US - on_time);
+            k_msleep(BREATH_STEP_MS);
+        }
+    }
+}
 
 static void debounce_handler(struct k_timer *timer) {
     struct charging_status_data *data = CONTAINER_OF(timer, struct charging_status_data, debounce_timer);
@@ -44,6 +83,14 @@ static void debounce_handler(struct k_timer *timer) {
     if (new_charging != data->charging) {
         data->charging = new_charging;
         LOG_INF("Charging status changed to: %s (debounced)", data->charging ? "Charging" : "Completed");
+
+        // LED控制：充电时启动呼吸，停止时关闭LED
+        if (data->charging) {
+            k_thread_resume(data->breath_tid);
+        } else {
+            k_thread_suspend(data->breath_tid);
+            gpio_pin_set_dt(&cfg->led, 0);  // 关闭LED
+        }
 
         if (data->handler) {
             data->handler(sensor, data->trig_handler);
@@ -71,14 +118,15 @@ static int charging_status_init(const struct device *dev) {
     const struct charging_status_cfg *cfg = dev->config;
     int ret;
 
+    // 配置CHRG GPIO
     if (!gpio_is_ready_dt(&cfg->gpio)) {
-        LOG_ERR("GPIO device not ready");
+        LOG_ERR("CHRG GPIO device not ready");
         return -ENODEV;
     }
 
     ret = gpio_pin_configure_dt(&cfg->gpio, GPIO_INPUT | GPIO_PULL_UP);
     if (ret < 0) {
-        LOG_ERR("Failed to configure GPIO: %d", ret);
+        LOG_ERR("Failed to configure CHRG GPIO: %d", ret);
         return ret;
     }
 
@@ -95,10 +143,28 @@ static int charging_status_init(const struct device *dev) {
         return ret;
     }
 
+    // 配置LED GPIO（如果定义）
+    if (gpio_is_ready_dt(&cfg->led)) {
+        ret = gpio_pin_configure_dt(&cfg->led, GPIO_OUTPUT_INACTIVE);
+        if (ret < 0) {
+            LOG_ERR("Failed to configure LED GPIO: %d", ret);
+            return ret;
+        }
+    } else {
+        LOG_WRN("LED GPIO not defined, skipping LED init");
+    }
+
     // 初始化去抖动定时器
     k_timer_init(&data->debounce_timer, debounce_handler, NULL);
 
-    // 初始读取并日志（无去抖动，因为是初始化）
+    // 创建呼吸线程（初始挂起）
+    data->breath_tid = k_thread_create(&data->breath_thread_data, data->breath_stack,
+                                       K_THREAD_STACK_SIZEOF(data->breath_stack),
+                                       breath_led_thread, (void *)dev, NULL, NULL,
+                                       K_PRIO_COOP(7), 0, K_NO_WAIT);
+    k_thread_suspend(data->breath_tid);
+
+    // 初始读取并日志
     int level = gpio_pin_get_dt(&cfg->gpio);
 #if CONFIG_CHARGING_STATUS_ACTIVE_LOW
     data->charging = (level == 0);
@@ -106,6 +172,13 @@ static int charging_status_init(const struct device *dev) {
     data->charging = (level == 1);
 #endif
     LOG_INF("Initial charging status: %s", data->charging ? "Charging" : "Completed");
+
+    // 初始LED状态
+    if (data->charging) {
+        k_thread_resume(data->breath_tid);
+    } else {
+        gpio_pin_set_dt(&cfg->led, 0);
+    }
 
     return 0;
 }
@@ -164,6 +237,7 @@ static const struct sensor_driver_api charging_status_api = {
     static struct charging_status_data charging_status_data_##inst;            \
     static const struct charging_status_cfg charging_status_cfg_##inst = {     \
         .gpio = GPIO_DT_SPEC_INST_GET(inst, gpios),                            \
+        .led = GPIO_DT_SPEC_INST_GET_OR(inst, led_gpios, {0}),                 \
     };                                                                         \
     SENSOR_DEVICE_DT_INST_DEFINE(inst, charging_status_init, NULL,             \
                                  &charging_status_data_##inst,                 \

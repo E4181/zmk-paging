@@ -9,3 +9,7 @@ properties:
     type: phandle-array
     required: true
     description: GPIO pin connected to TP4056 CHRG (e.g., P1.09 on nRF52840).
+  led-gpios:
+    type: phandle-array
+    required: false
+    description: GPIO pin for LED indicator (e.g., P1.06 on nRF52840, for breathing effect during charging).
