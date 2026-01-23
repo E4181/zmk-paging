@@ -5,15 +5,13 @@
 
 #pragma once
 
-#include <zephyr/kernel.h>
-#include <zephyr/device.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* 获取设备指针的宏 */
-#define BLUETOOTH_STATUS_DEVICE DEVICE_DT_GET_OR_NULL(DT_ALIAS(bluetooth_status_led))
+/* 公开的API函数（如果需要） */
+int bluetooth_status_get_connection_state(void);
+void bluetooth_status_update(void);
 
 #ifdef __cplusplus
 }

@@ -76,13 +76,5 @@
     //        pwms = <&pwm0 0 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
     //    };
     //};
-    
-    aliases {
-        bluetooth-status-led = &bluetooth_status_led;  /* 注意：使用连字符而不是下划线 */
-    };
-    
-    bluetooth_status_led: bluetooth_status_led {
-        compatible = "gpio-leds";
-        gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
-    };
+
 };

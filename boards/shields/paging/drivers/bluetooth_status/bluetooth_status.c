@@ -23,19 +23,12 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define CONFIG_BLUETOOTH_STATUS_LED_PIN 26  /* 默认使用 P0.26 */
 #endif
 
-#ifndef CONFIG_BLUETOOTH_STATUS_BLINK_INTERVAL_MS
-#define CONFIG_BLUETOOTH_STATUS_BLINK_INTERVAL_MS 500  /* 默认闪烁间隔 500ms */
+#ifndef CONFIG_BLUETOOTH_STATUS_LED_PORT
+#define CONFIG_BLUETOOTH_STATUS_LED_PORT "GPIO_0"
 #endif
 
-/* 配置LED引脚 */
-#define BLUETOOTH_STATUS_LED_NODE DT_ALIAS(bluetooth_status_led)
-
-#if DT_NODE_HAS_STATUS(BLUETOOTH_STATUS_LED_NODE, okay)
-static const struct gpio_dt_spec bluetooth_led = 
-    GPIO_DT_SPEC_GET(BLUETOOTH_STATUS_LED_NODE, gpios);
-#else
-/* 如果设备树中没有定义，则使用Kconfig中定义的引脚 */
-#define BLUETOOTH_STATUS_LED_PORT DT_LABEL(DT_NODELABEL(gpio0))
+#ifndef CONFIG_BLUETOOTH_STATUS_BLINK_INTERVAL_MS
+#define CONFIG_BLUETOOTH_STATUS_BLINK_INTERVAL_MS 500  /* 默认闪烁间隔 500ms */
 #endif
 
 /* 设备私有数据结构 */
@@ -43,6 +36,7 @@ struct bluetooth_status_data {
     bool led_state;
     bool ble_initialized;
     bool is_connected;
+    const struct device *gpio_dev;
     struct k_work_delayable led_work;
     struct k_work status_check_work;
 };
@@ -55,23 +49,12 @@ static int set_led_state(bool state)
 {
     int ret;
     
-#ifdef BLUETOOTH_STATUS_LED_PORT
-    /* 如果没有设备树配置，使用直接的GPIO控制 */
-    const struct device *gpio_dev = device_get_binding(BLUETOOTH_STATUS_LED_PORT);
-    if (!gpio_dev) {
-        LOG_ERR("Failed to get GPIO device");
+    if (!bluetooth_data.gpio_dev) {
+        LOG_ERR("GPIO device not initialized");
         return -ENODEV;
     }
-    ret = gpio_pin_set(gpio_dev, CONFIG_BLUETOOTH_STATUS_LED_PIN, state ? 1 : 0);
-#else
-    /* 使用设备树配置的GPIO */
-    if (!device_is_ready(bluetooth_led.port)) {
-        LOG_ERR("LED device not ready");
-        return -ENODEV;
-    }
-    ret = gpio_pin_set_dt(&bluetooth_led, state ? 1 : 0);
-#endif
     
+    ret = gpio_pin_set(bluetooth_data.gpio_dev, CONFIG_BLUETOOTH_STATUS_LED_PIN, state ? 1 : 0);
     if (ret < 0) {
         LOG_ERR("Failed to set LED state (err %d)", ret);
         return ret;
@@ -155,8 +138,6 @@ static int bluetooth_status_event_listener(const zmk_event_t *eh)
         return 0;
     }
     
-    /* 可以添加更多事件监听，例如连接状态变化事件等 */
-    
     return 0;
 }
 
@@ -171,34 +152,23 @@ static int bluetooth_status_init(const struct device *dev)
     bluetooth_data.ble_initialized = true;  /* 假设蓝牙已初始化 */
     bluetooth_data.is_connected = false;
     
-    /* 配置GPIO引脚 */
-#ifdef BLUETOOTH_STATUS_LED_PORT
-    /* 如果没有设备树配置，使用Kconfig配置的引脚 */
-    const struct device *gpio_dev = device_get_binding(BLUETOOTH_STATUS_LED_PORT);
-    if (!gpio_dev) {
-        LOG_ERR("Failed to get GPIO device");
+    /* 获取GPIO设备 */
+    bluetooth_data.gpio_dev = device_get_binding(CONFIG_BLUETOOTH_STATUS_LED_PORT);
+    if (!bluetooth_data.gpio_dev) {
+        LOG_ERR("Failed to get GPIO device for port %s", CONFIG_BLUETOOTH_STATUS_LED_PORT);
         return -ENODEV;
     }
     
-    ret = gpio_pin_configure(gpio_dev, CONFIG_BLUETOOTH_STATUS_LED_PIN, 
+    /* 配置GPIO引脚 */
+    ret = gpio_pin_configure(bluetooth_data.gpio_dev, CONFIG_BLUETOOTH_STATUS_LED_PIN, 
                             GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_HIGH);
     if (ret < 0) {
         LOG_ERR("Failed to configure LED pin (err %d)", ret);
         return ret;
     }
-#else
-    /* 使用设备树配置的GPIO */
-    if (!device_is_ready(bluetooth_led.port)) {
-        LOG_ERR("LED device not ready");
-        return -ENODEV;
-    }
     
-    ret = gpio_pin_configure_dt(&bluetooth_led, GPIO_OUTPUT_INACTIVE);
-    if (ret < 0) {
-        LOG_ERR("Failed to configure LED pin (err %d)", ret);
-        return ret;
-    }
-#endif
+    /* 初始化为熄灭状态 */
+    set_led_state(false);
     
     /* 初始化工作项 */
     k_work_init_delayable(&bluetooth_data.led_work, led_blink_work_handler);
