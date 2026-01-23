@@ -2,7 +2,7 @@
  * Copyright (c) 2024
  * SPDX-License-Identifier: MIT
  *
- * Charging Status Driver API for TP4056
+ * Charging Status Driver API for TP4056 with LED indication
  */
 
 #ifndef ZEPHYR_DRIVERS_CHARGING_STATUS_H_
@@ -15,6 +15,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* ============ 充电状态相关API ============ */
 
 /**
  * @brief 获取当前充电状态
@@ -59,12 +61,36 @@ int charging_status_get_stats(const struct device *dev,
                             uint32_t *interrupt_count,
                             bool *hardware_fault);
 
+/* ============ LED控制API ============ */
+
 /**
- * @brief 重置驱动统计信息
+ * @brief 手动控制LED（测试用）
  * @param dev 充电状态设备指针
+ * @param enable 是否启用LED
  * @return 0表示成功，负数表示错误码
  */
-int charging_status_reset_stats(const struct device *dev);
+int charging_status_led_set(const struct device *dev, bool enable);
+
+/**
+ * @brief 获取当前LED状态
+ * @param dev 充电状态设备指针
+ * @param is_active 存储LED状态的指针（true=活动，false=熄灭）
+ * @return 0表示成功，负数表示错误码
+ */
+int charging_status_led_get_state(const struct device *dev, bool *is_active);
+
+/**
+ * @brief 设置LED效果参数
+ * @param dev 充电状态设备指针
+ * @param period_ms 呼吸周期（毫秒，PWM模式）
+ * @param max_brightness 最大亮度（0-255，PWM模式）
+ * @param blink_interval_ms 闪烁间隔（毫秒，GPIO模式）
+ * @return 0表示成功，负数表示错误码
+ */
+int charging_status_led_set_params(const struct device *dev,
+                                 uint32_t period_ms,
+                                 uint8_t max_brightness,
+                                 uint32_t blink_interval_ms);
 
 #ifdef __cplusplus
 }

@@ -1,9 +1,11 @@
 # Copyright (c) 2024
 # SPDX-License-Identifier: MIT
 
-description: Charging Status Driver for TP4056
+description: Charging Status Driver for TP4056 with LED indication
 
 compatible: "zmk,charging-status"
+
+include: [gpio-controller.yaml, pwm-device.yaml]
 
 properties:
   chrg-gpios:
@@ -16,3 +18,36 @@ properties:
     type: int
     default: 1000
     description: Status polling interval in milliseconds
+
+  # LED指示功能
+  led:
+    type: object
+    description: LED indicator configuration
+    properties:
+      pwms:
+        required: false
+        type: phandle-array
+        description: PWM specification for LED control
+
+      gpios:
+        required: false
+        type: phandle-array
+        description: GPIO pin for LED control (if not using PWM)
+
+      breathe-period-ms:
+        required: false
+        type: int
+        default: 2000
+        description: Breathe effect period in milliseconds
+
+      max-brightness:
+        required: false
+        type: int
+        default: 200
+        description: Maximum LED brightness (0-255)
+
+      blink-interval-ms:
+        required: false
+        type: int
+        default: 500
+        description: Blink interval in milliseconds (GPIO mode only)
