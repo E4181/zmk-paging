@@ -12,7 +12,7 @@
 #include <zephyr/logging/log.h>
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/event_manager.h>
-#include "layer_indicator.h"
+#include "layer_indicator.h"  /* 使用相对路径 */
 
 LOG_MODULE_REGISTER(layer_change, CONFIG_ZMK_LOG_LEVEL);
 
@@ -180,20 +180,20 @@ static int handle_layer_state_changed(const zmk_event_t *eh) {
         return ZMK_EV_EVENT_BUBBLE;
     }
     
-    /* 遍历所有layer_change设备实例 */
-    const struct device *dev;
-    struct layer_change_data *data;
+    /* 使用更安全的方式获取设备实例 */
+    #define CALL_CHECK_LAYER(inst) \
+        do { \
+            const struct device *dev = DEVICE_DT_INST_GET(inst); \
+            if (device_is_ready(dev)) { \
+                struct layer_change_data *data = dev->data; \
+                if (data->enabled) { \
+                    check_layer_and_blink(dev); \
+                } \
+            } \
+        } while (0)
     
-    for (int i = 0; (dev = DEVICE_DT_INST_GET(i)); i++) {
-        if (!device_is_ready(dev)) {
-            continue;
-        }
-        
-        data = dev->data;
-        if (data->enabled) {
-            check_layer_and_blink(dev);
-        }
-    }
+    /* 遍历所有实例 */
+    DT_INST_FOREACH_STATUS_OKAY(CALL_CHECK_LAYER);
     
     return ZMK_EV_EVENT_BUBBLE;
 }
