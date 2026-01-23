@@ -41,8 +41,8 @@
 LOG_MODULE_REGISTER(ble_check, BLE_CHECK_LOG_LEVEL);
 
 /* 设备树节点检查 - 使用 Zephyr 标准方法 */
-#if DT_NODE_EXISTS(DT_ALIAS(ble_check_led))
-#define BLE_CHECK_LED_NODE DT_ALIAS(ble_check_led)
+#if DT_NODE_EXISTS(DT_ALIAS(ble-check-led))
+#define BLE_CHECK_LED_NODE DT_ALIAS(ble-check-led)
 #define BLE_CHECK_LED_SUPPORTED 1
 #else
 /* 尝试使用不带下划线的别名（设备树兼容） */
