@@ -15,6 +15,11 @@
 
 LOG_MODULE_REGISTER(layer_indicator, CONFIG_ZMK_LOG_LEVEL);
 
+/* 如果没有定义，使用默认值 */
+#ifndef CONFIG_ZMK_LAYER_INDICATOR_MAX_EVENTS
+#define CONFIG_ZMK_LAYER_INDICATOR_MAX_EVENTS 20
+#endif
+
 /* 驱动配置结构体 */
 struct layer_indicator_config {
     bool log_all_transitions;  /* 是否记录所有层状态变化 */
@@ -51,7 +56,13 @@ K_MSGQ_DEFINE(layer_indicator_msgq,
 static void process_layer_events_cb(struct k_work *work) {
     struct layer_indicator_event event;
     const struct device *dev = DEVICE_DT_INST_GET(0);
-    struct layer_indicator_data *data = (struct layer_indicator_data *)dev->data;
+    
+    if (!device_is_ready(dev)) {
+        LOG_ERR("Device not ready");
+        return;
+    }
+    
+    struct layer_indicator_data *data = dev->data;
     const struct layer_indicator_config *cfg = dev->config;
     
     while (k_msgq_get(&layer_indicator_msgq, &event, K_NO_WAIT) >= 0) {
@@ -99,11 +110,19 @@ static void process_layer_events_cb(struct k_work *work) {
             
             /* 记录所有激活的层 */
             if (data->active_layer_count > 0) {
-                LOG_DBG("Active layers: ");
+                char layer_list[64] = {0};
+                int pos = 0;
+                
                 for (int i = 0; i < ZMK_KEYMAP_LAYERS_LEN; i++) {
                     if (data->layer_states[i]) {
-                        LOG_DBG("  - Layer %d", i);
+                        pos += snprintf(layer_list + pos, sizeof(layer_list) - pos, 
+                                       "%d ", i);
+                        if (pos >= sizeof(layer_list)) break;
                     }
+                }
+                
+                if (pos > 0) {
+                    LOG_DBG("Active layers: %s", layer_list);
                 }
             } else {
                 LOG_DBG("No active layers (default layer only)");
@@ -146,7 +165,12 @@ static int handle_layer_state_changed(const zmk_event_t *eh) {
 
 /* 获取当前激活层数的API函数 */
 static int layer_indicator_get_active_count(const struct device *dev, uint8_t *count) {
-    struct layer_indicator_data *data = (struct layer_indicator_data *)dev->data;
+    if (!device_is_ready(dev)) {
+        LOG_ERR("Device not ready");
+        return -ENODEV;
+    }
+    
+    struct layer_indicator_data *data = dev->data;
     
     if (count == NULL) {
         return -EINVAL;
@@ -167,7 +191,12 @@ static int layer_indicator_get_active_count(const struct device *dev, uint8_t *c
 
 /* 获取最高激活层的API函数 */
 static int layer_indicator_get_highest_layer(const struct device *dev, uint8_t *layer) {
-    struct layer_indicator_data *data = (struct layer_indicator_data *)dev->data;
+    if (!device_is_ready(dev)) {
+        LOG_ERR("Device not ready");
+        return -ENODEV;
+    }
+    
+    struct layer_indicator_data *data = dev->data;
     
     if (layer == NULL) {
         return -EINVAL;
@@ -188,7 +217,12 @@ static int layer_indicator_get_highest_layer(const struct device *dev, uint8_t *
 
 /* 检查特定层是否激活的API函数 */
 static int layer_indicator_is_layer_active(const struct device *dev, uint8_t layer, bool *active) {
-    struct layer_indicator_data *data = (struct layer_indicator_data *)dev->data;
+    if (!device_is_ready(dev)) {
+        LOG_ERR("Device not ready");
+        return -ENODEV;
+    }
+    
+    struct layer_indicator_data *data = dev->data;
     
     if (active == NULL || layer >= ZMK_KEYMAP_LAYERS_LEN) {
         return -EINVAL;
@@ -212,7 +246,12 @@ static int layer_indicator_get_all_active(const struct device *dev,
                                          uint8_t *layers, 
                                          uint8_t max_layers, 
                                          uint8_t *count) {
-    struct layer_indicator_data *data = (struct layer_indicator_data *)dev->data;
+    if (!device_is_ready(dev)) {
+        LOG_ERR("Device not ready");
+        return -ENODEV;
+    }
+    
+    struct layer_indicator_data *data = dev->data;
     
     if (layers == NULL || count == NULL) {
         return -EINVAL;
@@ -240,7 +279,12 @@ static int layer_indicator_get_all_active(const struct device *dev,
 
 /* 获取最后变化时间的API函数 */
 static int layer_indicator_get_last_change_time(const struct device *dev, int64_t *timestamp) {
-    struct layer_indicator_data *data = (struct layer_indicator_data *)dev->data;
+    if (!device_is_ready(dev)) {
+        LOG_ERR("Device not ready");
+        return -ENODEV;
+    }
+    
+    struct layer_indicator_data *data = dev->data;
     
     if (timestamp == NULL) {
         return -EINVAL;
@@ -261,7 +305,7 @@ static int layer_indicator_get_last_change_time(const struct device *dev, int64_
 
 /* 驱动初始化函数 */
 static int layer_indicator_init(const struct device *dev) {
-    struct layer_indicator_data *data = (struct layer_indicator_data *)dev->data;
+    struct layer_indicator_data *data = dev->data;
     
     /* 初始化互斥锁 */
     k_mutex_init(&data->lock);
@@ -293,13 +337,15 @@ static int layer_indicator_init(const struct device *dev) {
 }
 
 /* 驱动API结构体 */
-static const struct layer_indicator_api {
+struct layer_indicator_api {
     int (*get_active_count)(const struct device *dev, uint8_t *count);
     int (*get_highest_layer)(const struct device *dev, uint8_t *layer);
     int (*is_layer_active)(const struct device *dev, uint8_t layer, bool *active);
     int (*get_all_active)(const struct device *dev, uint8_t *layers, uint8_t max_layers, uint8_t *count);
     int (*get_last_change_time)(const struct device *dev, int64_t *timestamp);
-} layer_indicator_api = {
+};
+
+static const struct layer_indicator_api layer_indicator_api_funcs = {
     .get_active_count = layer_indicator_get_active_count,
     .get_highest_layer = layer_indicator_get_highest_layer,
     .is_layer_active = layer_indicator_is_layer_active,
@@ -329,6 +375,6 @@ ZMK_SUBSCRIPTION(layer_indicator, zmk_layer_state_changed);
                          &layer_indicator_config_##n, \
                          POST_KERNEL, \
                          CONFIG_APPLICATION_INIT_PRIORITY, \
-                         &layer_indicator_api);
+                         &layer_indicator_api_funcs);
 
 DT_INST_FOREACH_STATUS_OKAY(LAYER_INDICATOR_INIT)

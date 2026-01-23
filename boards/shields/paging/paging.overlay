@@ -77,9 +77,14 @@
     //    };
     //};
 
-
     bluetooth_status: bluetooth_status {
         compatible = "bluetooth-status";
         gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+    };
+
+    layer_indicator {
+        compatible = "zmk,layer-indicator";
+        log_all_transitions = <0>; /* 设置为1记录所有层变化，0只记录层数变化 */
+        max_active_layers = <10>;  /* 最大层数，应等于或大于ZMK_KEYMAP_LAYERS_LEN */
     };
 };
