@@ -40,8 +40,8 @@
 /* 创建日志模块实例 */
 LOG_MODULE_REGISTER(ble_check, BLE_CHECK_LOG_LEVEL);
 
-/* GPIO设备树兼容性标识符 */
-#define LED_NODE DT_ALIAS(ble_check_led)
+/* 设备树节点定义 - 直接使用节点，不使用别名 */
+#define LED_NODE DT_PATH(ble_check_led)
 
 /* 检查LED设备树节点是否存在 */
 #if DT_NODE_HAS_STATUS(LED_NODE, okay)
@@ -206,7 +206,10 @@ static int ble_check_init(void)
         return ret;
     }
     
-    LOG_INF("LED configured on pin P0.%d (active high)", led.pin);
+    LOG_INF("LED configured on GPIO: port=%p, pin=%d, dt_flags=0x%x", 
+            led.port, led.pin, led.dt_flags);
+#else
+    LOG_WRN("LED device tree node not found. LED indication disabled.");
 #endif
     
     /* 获取初始连接状态 */
