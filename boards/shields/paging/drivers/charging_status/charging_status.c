@@ -34,8 +34,11 @@ struct charging_status_data {
 
 static void breath_work_handler(struct k_work *work)
 {
+    struct k_work_delayable *dwork =
+        CONTAINER_OF(work, struct k_work_delayable, work);
+
     struct charging_status_data *data =
-        CONTAINER_OF(work, struct charging_status_data, breath_work);
+        CONTAINER_OF(dwork, struct charging_status_data, breath_work);
 
     const struct device *dev = DEVICE_DT_INST_GET(0);
     const struct charging_status_config *cfg = dev->config;
