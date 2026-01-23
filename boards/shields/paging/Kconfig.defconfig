@@ -70,4 +70,17 @@ config CHARGING_STATUS_THREAD_PRIORITY
     help
       Priority for charging status monitoring thread.
 
+config CHARGING_STATUS_LOG_LEVEL
+    int "Charging Status log level"
+    default 2
+    range 0 4
+    help
+      Log level for charging status driver.
+      Levels are:
+      0 OFF
+      1 ERROR
+      2 WARNING
+      3 INFO
+      4 DEBUG
+
 endif # CHARGING_STATUS

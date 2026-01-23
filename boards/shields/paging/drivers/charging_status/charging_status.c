@@ -6,13 +6,19 @@
  * Uses interrupt mode for real-time charging status detection
  */
 
+#define DT_DRV_COMPAT zmk_charging_status
+
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
+#include <string.h>
 
 LOG_MODULE_REGISTER(charging_status, CONFIG_CHARGING_STATUS_LOG_LEVEL);
+
+/* Forward declaration for callback */
+typedef void (*charging_status_callback_t)(bool is_charging, void *user_data);
 
 /* Driver data structure */
 struct charging_status_data {
@@ -78,8 +84,6 @@ static void charging_status_debounce_work(struct k_work *work)
     const struct charging_status_config *config = dev->config;
     
     int current_state = gpio_pin_get_dt(&config->chrg_gpio);
-    atomic_t old_status;
-    bool status_changed = false;
     
     /* TP4056 CHRG pin is active LOW when charging */
     int new_charging_status = (current_state == 0);
@@ -88,7 +92,6 @@ static void charging_status_debounce_work(struct k_work *work)
     if (new_charging_status != old_charging_status) {
         atomic_set(&data->charging, new_charging_status);
         data->last_change_time = k_uptime_get();
-        status_changed = true;
         
         LOG_DBG("Charging status changed: %s",
                 new_charging_status ? "CHARGING" : "NOT_CHARGING");
@@ -163,6 +166,14 @@ static int charging_status_get_last_change(const struct device *dev,
 }
 
 /* Driver API structure */
+__subsystem struct charging_status_driver_api {
+    int (*get_status)(const struct device *dev, bool *is_charging);
+    int (*register_callback)(const struct device *dev,
+                           charging_status_callback_t callback,
+                           void *user_data);
+    int (*get_last_change)(const struct device *dev, int64_t *timestamp);
+};
+
 static const struct charging_status_driver_api charging_status_api = {
     .get_status = charging_status_get,
     .register_callback = charging_status_register_callback,
@@ -220,8 +231,7 @@ static int charging_status_init(const struct device *dev)
             (initial_state == 0) ? "CHARGING" : "NOT_CHARGING");
     
     /* Create monitoring thread */
-    data->thread_stack = k_thread_stack_alloc(config->thread_stack_size,
-                                             K_THREAD_STACK_SIZEOF(config->thread_stack_size));
+    data->thread_stack = k_thread_stack_alloc(config->thread_stack_size, 0);
     if (data->thread_stack == NULL) {
         LOG_ERR("Failed to allocate thread stack");
         return -ENOMEM;
