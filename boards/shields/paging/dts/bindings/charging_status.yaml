@@ -5,7 +5,8 @@ description: Charging Status Driver for TP4056 with LED indication
 
 compatible: "zmk,charging-status"
 
-include: [gpio-controller.yaml, pwm-device.yaml]
+include: 
+  gpio-controller.yaml
 
 properties:
   chrg-gpios:
