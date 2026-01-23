@@ -111,16 +111,16 @@ static void chrg_gpio_callback(const struct device *dev, struct gpio_callback *c
     k_work_reschedule(&data->debounce_work, K_MSEC(config->debounce_ms));
 }
 
-/* 获取当前充电状态 */
-static enum charging_status_state charging_status_get_state(const struct device *dev)
+/* 获取当前充电状态 - 使用__attribute__((used))避免未使用警告 */
+static enum charging_status_state __attribute__((used)) charging_status_get_state(const struct device *dev)
 {
     struct charging_status_data *data = dev->data;
     
     return data->current_state;
 }
 
-/* 设置状态变化回调函数 */
-static int charging_status_set_callback(const struct device *dev, 
+/* 设置状态变化回调函数 - 使用__attribute__((used))避免未使用警告 */
+static int __attribute__((used)) charging_status_set_callback(const struct device *dev, 
                                 void (*callback)(const struct device *dev, 
                                                 enum charging_status_state state))
 {
@@ -187,8 +187,8 @@ static int charging_status_update(const struct device *dev)
     return 0;
 }
 
-/* 设备初始化 */
-static int charging_status_init(const struct device *dev)
+/* 设备初始化 - 使用__attribute__((used))避免未使用警告 */
+static int __attribute__((used)) charging_status_init(const struct device *dev)
 {
     const struct charging_status_config *config = dev->config;
     struct charging_status_data *data = dev->data;
