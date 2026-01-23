@@ -4,6 +4,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/devicetree.h>
 
+#define DT_DRV_COMPAT zmk_charging_status
+
 #define BREATH_STEPS        64
 #define BREATH_PERIOD_MS    20
 #define PWM_PERIOD_USEC     1000
