@@ -9,11 +9,10 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
+#include <stdio.h>  /* 添加这个头文件 */
 #include <zmk/keymap.h>
-#include <stdio.h> 
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/event_manager.h>
-#include "layer_indicator.h"
 
 LOG_MODULE_REGISTER(layer_indicator, CONFIG_ZMK_LOG_LEVEL);
 
@@ -45,7 +44,6 @@ struct layer_indicator_data {
 struct layer_indicator_event {
     uint8_t layer;
     bool state;
-    bool locked;
     int64_t timestamp;
 };
 
@@ -102,10 +100,9 @@ static void process_layer_events_cb(struct k_work *work) {
         if (cfg->log_all_transitions || 
             data->previous_layer_count != data->active_layer_count) {
             
-            LOG_INF("Layer %d %s %s (Active layers: %d, Highest: %d, Time: %lld)",
+            LOG_INF("Layer %d %s (Active layers: %d, Highest: %d, Time: %lld)",
                    event.layer,
                    event.state ? "activated" : "deactivated",
-                   event.locked ? "(locked)" : "(unlocked)",
                    data->active_layer_count,
                    data->highest_active_layer,
                    event.timestamp);
@@ -149,7 +146,6 @@ static int handle_layer_state_changed(const zmk_event_t *eh) {
     struct layer_indicator_event event = {
         .layer = ev->layer,
         .state = ev->state,
-        .locked = ev->locked,
         .timestamp = ev->timestamp
     };
     
@@ -376,7 +372,7 @@ ZMK_SUBSCRIPTION(layer_indicator, zmk_layer_state_changed);
                          &layer_indicator_data_##n, \
                          &layer_indicator_config_##n, \
                          POST_KERNEL, \
-                         CONFIG_APPLICATION_INIT_PRIORITY, \
+                         CONFIG_KERNEL_INIT_PRIORITY_DEFAULT, \
                          &layer_indicator_api_funcs);
 
 DT_INST_FOREACH_STATUS_OKAY(LAYER_INDICATOR_INIT)
