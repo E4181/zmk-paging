@@ -123,13 +123,13 @@ static int charging_status_init(const struct device *dev) {
     const struct charging_status_cfg *cfg = dev->config;
     int ret;
 
-    // 配置CHRG GPIO
+    // 配置CHRG GPIO为纯输入模式（无内部上拉，依赖外部上拉）
     if (!gpio_is_ready_dt(&cfg->gpio)) {
         LOG_ERR("CHRG GPIO device not ready");
         return -ENODEV;
     }
 
-    ret = gpio_pin_configure_dt(&cfg->gpio, GPIO_INPUT | GPIO_PULL_UP);
+    ret = gpio_pin_configure_dt(&cfg->gpio, GPIO_INPUT);
     if (ret < 0) {
         LOG_ERR("Failed to configure CHRG GPIO: %d", ret);
         return ret;
@@ -169,14 +169,17 @@ static int charging_status_init(const struct device *dev) {
                                        K_PRIO_COOP(7), 0, K_NO_WAIT);
     k_thread_suspend(data->breath_tid);
 
-    // 初始读取并日志
-    int level = gpio_pin_get_dt(&cfg->gpio);
+    // 初始读取并日志（重复读取两次验证稳定性）
+    int level1 = gpio_pin_get_dt(&cfg->gpio);
+    k_msleep(5);  // 短延时验证
+    int level2 = gpio_pin_get_dt(&cfg->gpio);
+    int level = (level1 == level2) ? level1 : -1;  // 不一致标记错误
 #if CONFIG_CHARGING_STATUS_ACTIVE_LOW
     data->charging = (level == 0);
 #else
     data->charging = (level == 1);
 #endif
-    LOG_INF("Initial charging status: %s (level: %d)", data->charging ? "Charging" : "Completed", level);
+    LOG_INF("Initial charging status: %s (level1: %d, level2: %d)", data->charging ? "Charging" : "Completed", level1, level2);
 
     // 初始LED状态
     if (data->charging) {
