@@ -14,7 +14,7 @@
         zmk,kscan = &kscan0;
         zmk,physical-layout = &physical_layout0;
 		zmk,underglow = &led_strip;
-        zmk,backlight = &backlight;
+        //zmk,backlight = &backlight;
         zephyr,display = &oled;
         zmk,battery = &vbatt;
     };
