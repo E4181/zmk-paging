@@ -13,10 +13,10 @@ LOG_MODULE_REGISTER(charging_status, CONFIG_CHARGING_STATUS_LOG_LEVEL);
 #define NODE DT_INST(0, custom_charging_status)
 
 #if !DT_NODE_HAS_STATUS(NODE, okay)
-#error "charging_status node missing in devicetree"
+#error "charging_status devicetree node missing"
 #endif
 
-/* GPIO specs */
+/* GPIO definitions */
 static const struct gpio_dt_spec chrg_gpio =
     GPIO_DT_SPEC_GET(NODE, chrg_gpios);
 
@@ -36,11 +36,11 @@ static struct k_work_delayable led_work;
 static uint8_t led_duty;
 static bool led_up;
 
-#define LED_STEP_MS 20
+#define LED_STEP_MS 30
 #define LED_MAX     100
 
 /* ========================================================= */
-/* LED breathing worker (NON-BLOCKING, SAFE)                 */
+/* LED breathing worker (non-blocking)                       */
 /* ========================================================= */
 static void led_breathing_worker(struct k_work *work)
 {
@@ -49,12 +49,10 @@ static void led_breathing_worker(struct k_work *work)
         return;
     }
 
-    /* simple logical PWM */
     gpio_pin_set(led_gpio.port, led_gpio.pin, led_duty > 50);
 
     if (led_up) {
-        led_duty++;
-        if (led_duty >= LED_MAX) {
+        if (++led_duty >= LED_MAX) {
             led_duty = LED_MAX;
             led_up = false;
         }
@@ -70,7 +68,7 @@ static void led_breathing_worker(struct k_work *work)
 }
 
 /* ========================================================= */
-/* CHRG GPIO ISR                                             */
+/* CHRG interrupt: sample once, then RELEASE GPIO            */
 /* ========================================================= */
 static void chrg_gpio_isr(
     const struct device *port,
@@ -81,7 +79,7 @@ static void chrg_gpio_isr(
     ARG_UNUSED(cb);
     ARG_UNUSED(pins);
 
-    /* RAW physical level: TP4056 -> LOW = charging */
+    /* Read RAW physical level: TP4056 -> LOW = charging */
     int level = gpio_pin_get_raw(chrg_gpio.port, chrg_gpio.pin);
     if (level < 0) {
         return;
@@ -89,6 +87,13 @@ static void chrg_gpio_isr(
 
     bool charging = (level == 0);
     bool prev = atomic_set(&charging_state, charging);
+
+    /* CRITICAL: immediately disable interrupt to release CHRG */
+    gpio_pin_interrupt_configure(
+        chrg_gpio.port,
+        chrg_gpio.pin,
+        GPIO_INT_DISABLE
+    );
 
     if (charging != prev) {
         LOG_INF("Charging state: %s",
@@ -117,12 +122,11 @@ static int charging_status_init(void)
         return -ENODEV;
     }
 
-    /* CHRG: strict high-impedance input, NO pull */
+    /* CHRG: strict high-impedance input */
     ret = gpio_pin_configure(
         chrg_gpio.port,
         chrg_gpio.pin,
-        GPIO_INPUT
-    );
+        GPIO_INPUT);
     if (ret) {
         return ret;
     }
@@ -136,7 +140,7 @@ static int charging_status_init(void)
         return ret;
     }
 
-    /* Initial state */
+    /* Initial one-time sample (no interrupt yet) */
     int level = gpio_pin_get_raw(chrg_gpio.port, chrg_gpio.pin);
     bool charging = (level == 0);
     atomic_set(&charging_state, charging);
@@ -144,7 +148,7 @@ static int charging_status_init(void)
     LOG_INF("Charging status init: %s",
             charging ? "CHARGING" : "NOT CHARGING");
 
-    /* GPIO interrupt */
+    /* GPIO interrupt: enabled ONCE */
     gpio_init_callback(&chrg_cb, chrg_gpio_isr, BIT(chrg_gpio.pin));
     gpio_add_callback(chrg_gpio.port, &chrg_cb);
 
