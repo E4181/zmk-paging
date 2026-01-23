@@ -5,10 +5,10 @@ target_sources(app PRIVATE
     #drivers/ble_check/ble_check.c
 )
 
-zephyr_include_directories(dts/bindings)
+#zephyr_include_directories(dts/bindings)
 
 zephyr_library()
 zephyr_library_sources(
     drivers/charging_status/charging_status.c
-    #drivers/ble_check/ble_check.c
+    drivers/bluetooth_led/bluetooth_led.c
 )
