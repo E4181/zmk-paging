@@ -77,11 +77,8 @@
     //    };
     //};
     
-    bluetooth_led: bluetooth_led {
-        compatible = "gpio-leds";
-        led0 {
-            gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
-            label = "BLE_STATUS_LED";
-        };
+    led0: led_0 {
+        gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+        label = "BLE_STATUS_LED";
     };
 };
