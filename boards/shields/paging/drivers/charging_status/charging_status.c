@@ -2,7 +2,7 @@
  * Copyright (c) 2024
  * SPDX-License-Identifier: MIT
  *
- * Charging Status Driver for TP4056 with LED indication
+ * Charging Status Driver for TP4056
  * Uses interrupt mode for real-time charging status detection
  */
 
@@ -11,11 +11,9 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
-#include <zephyr/drivers/pwm.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
 #include <stdio.h>
-#include <math.h>
 
 /* 直接在驱动文件中定义Kconfig宏 */
 #ifndef CONFIG_CHARGING_STATUS_LOG_LEVEL
@@ -40,22 +38,6 @@
 
 #ifndef CONFIG_CHARGING_STATUS_MIN_STABLE_TIME_MS
 #define CONFIG_CHARGING_STATUS_MIN_STABLE_TIME_MS 500  /* 最小稳定时间 */
-#endif
-
-#ifndef CONFIG_CHARGING_STATUS_LED_ENABLE
-#define CONFIG_CHARGING_STATUS_LED_ENABLE 1  /* 启用LED指示 */
-#endif
-
-#ifndef CONFIG_CHARGING_STATUS_LED_USE_PWM
-#define CONFIG_CHARGING_STATUS_LED_USE_PWM 0  /* 默认使用GPIO模式 */
-#endif
-
-#ifndef CONFIG_CHARGING_STATUS_LED_BREATHE_PERIOD_MS
-#define CONFIG_CHARGING_STATUS_LED_BREATHE_PERIOD_MS 2000  /* 呼吸周期 */
-#endif
-
-#ifndef CONFIG_CHARGING_STATUS_LED_MAX_BRIGHTNESS
-#define CONFIG_CHARGING_STATUS_LED_MAX_BRIGHTNESS 200  /* 最大亮度 */
 #endif
 
 LOG_MODULE_REGISTER(charging_status, CONFIG_CHARGING_STATUS_LOG_LEVEL);
@@ -108,31 +90,8 @@ struct charging_status_data {
     /* 硬件故障标志 */
     atomic_t hardware_fault;
     
-    /* LED控制相关 */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-    /* LED控制线程 */
-    struct k_thread led_thread;
-    k_thread_stack_t *led_thread_stack;
-    
-    /* LED定时器（GPIO模式） */
-    struct k_timer led_timer;
-    
-    /* LED状态 */
-    atomic_t led_enabled;
-    atomic_t led_active;
-    atomic_t breathe_active;
-    
-    /* 亮度相关 */
-    uint8_t current_brightness;
-    uint8_t max_brightness;
-    
-    /* 呼吸效果参数 */
-    uint32_t breathe_period_ms;
-    uint32_t breathe_step_ms;
-    
-    /* 闪烁间隔（GPIO模式） */
-    uint32_t blink_interval_ms;
-#endif
+    /* 上一次读取的GPIO物理电平（调试用） */
+    int last_raw_gpio_level;
 };
 
 /* 驱动配置结构 */
@@ -143,18 +102,6 @@ struct charging_status_config {
     /* 轮询间隔 (毫秒) */
     uint32_t status_interval_ms;
     
-    /* LED配置 */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-#if CONFIG_CHARGING_STATUS_LED_USE_PWM
-    struct pwm_dt_spec led_pwm;
-#else
-    struct gpio_dt_spec led_gpio;
-#endif
-    uint32_t breathe_period_ms;
-    uint32_t blink_interval_ms;
-    uint8_t max_brightness;
-#endif
-    
     /* 设备实例编号 */
     uint8_t instance;
 };
@@ -162,37 +109,7 @@ struct charging_status_config {
 /* 前向声明 */
 static void charging_status_debounce_work(struct k_work *work);
 static void charging_status_monitor_thread(void *p1, void *p2, void *p3);
-
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-static void charging_status_led_thread(void *p1, void *p2, void *p3);
-static void charging_status_led_timer_handler(struct k_timer *timer);
-static void update_led_state(const struct device *dev, bool enable);
-static void charging_status_led_init(const struct device *dev);
-#endif
-
-/* 读取稳定的GPIO状态（多次采样取多数） */
-static int read_stable_gpio_state(const struct gpio_dt_spec *gpio)
-{
-    int samples[5];
-    int low_count = 0, high_count = 0;
-    
-    for (int i = 0; i < 5; i++) {
-        int state = gpio_pin_get_dt(gpio);
-        if (state < 0) {
-            return state;  /* 读取错误 */
-        }
-        samples[i] = state;
-        if (state == 0) {
-            low_count++;
-        } else {
-            high_count++;
-        }
-        k_busy_wait(1000);  /* 等待1ms */
-    }
-    
-    /* 返回多数状态 */
-    return (low_count > high_count) ? 0 : 1;
-}
+static int read_stable_gpio_state(const struct gpio_dt_spec *gpio, int *raw_level);
 
 /* GPIO中断回调 */
 static void charging_status_gpio_callback(const struct device *dev,
@@ -215,227 +132,40 @@ static void charging_status_gpio_callback(const struct device *dev,
     k_work_schedule(&data->debounce_work, K_MSEC(CONFIG_CHARGING_STATUS_DEBOUNCE_MS));
 }
 
-/* 计算呼吸效果亮度曲线 */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE && CONFIG_CHARGING_STATUS_LED_USE_PWM
-static uint32_t calculate_breathe_brightness(uint32_t time_ms, uint32_t period_ms, uint8_t max_brightness)
+/* 读取稳定的GPIO状态（多次采样取多数） */
+static int read_stable_gpio_state(const struct gpio_dt_spec *gpio, int *raw_level)
 {
-    /* 使用正弦波计算呼吸效果 */
-    double angle = (2.0 * M_PI * time_ms) / period_ms;
-    double sine_value = sin(angle);
-    
-    /* 将正弦值从[-1, 1]映射到[0, max_brightness] */
-    double normalized = (sine_value + 1.0) / 2.0;  /* 映射到[0, 1] */
-    uint32_t brightness = (uint32_t)(normalized * normalized * max_brightness);
-    
-    return brightness;
-}
-
-/* PWM模式：设置LED亮度 */
-static int set_led_brightness_pwm(const struct device *dev, uint8_t brightness)
-{
-    const struct charging_status_config *config = dev->config;
-    struct charging_status_data *data = dev->data;
-    
-    if (!device_is_ready(config->led_pwm.dev)) {
-        LOG_ERR("PWM device not ready");
-        return -ENODEV;
-    }
-    
-    /* 计算占空比 */
-    uint32_t period_ns = config->led_pwm.period;
-    uint32_t pulse_ns = (brightness * period_ns) / data->max_brightness;
-    
-    /* 设置PWM */
-    int ret = pwm_set_pulse_dt(&config->led_pwm, pulse_ns);
-    if (ret < 0) {
-        LOG_ERR("Failed to set PWM pulse: %d", ret);
-        return ret;
-    }
-    
-    data->current_brightness = brightness;
-    return 0;
-}
-#endif
-
-/* GPIO模式：定时器回调 */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE && !CONFIG_CHARGING_STATUS_LED_USE_PWM
-static void charging_status_led_timer_handler(struct k_timer *timer)
-{
-    struct charging_status_data *data = CONTAINER_OF(timer, struct charging_status_data, led_timer);
-    const struct device *dev = data->dev;
-    const struct charging_status_config *config = dev->config;
-    
-    static bool led_state = false;
-    
-    if (atomic_get(&data->led_enabled)) {
-        /* 切换LED状态 */
-        led_state = !led_state;
-        gpio_pin_set_dt(&config->led_gpio, led_state ? 1 : 0);
-        LOG_DBG("LED %s", led_state ? "ON" : "OFF");
-    }
-}
-#endif
-
-/* 更新LED状态 */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-static void update_led_state(const struct device *dev, bool enable)
-{
-    struct charging_status_data *data = dev->data;
-    const struct charging_status_config *config = dev->config;
-    
-    atomic_set(&data->led_enabled, enable ? 1 : 0);
-    
-    LOG_DBG("LED state update: %s", enable ? "ENABLE" : "DISABLE");
-    
-#if CONFIG_CHARGING_STATUS_LED_USE_PWM
-    /* PWM模式 */
-    if (enable) {
-        atomic_set(&data->breathe_active, 1);
-        LOG_DBG("Breathe effect activated");
-    } else {
-        atomic_set(&data->breathe_active, 0);
-        /* 关闭LED */
-        pwm_set_pulse_dt(&config->led_pwm, 0);
-        data->current_brightness = 0;
-        LOG_DBG("LED turned off (PWM)");
-    }
-#else
-    /* GPIO模式 */
-    if (enable) {
-        /* 启动闪烁定时器 */
-        k_timer_start(&data->led_timer, K_MSEC(data->blink_interval_ms), K_MSEC(data->blink_interval_ms));
-        LOG_DBG("LED blink timer started (%u ms interval)", data->blink_interval_ms);
-    } else {
-        /* 停止定时器并关闭LED */
-        k_timer_stop(&data->led_timer);
-        gpio_pin_set_dt(&config->led_gpio, 0);
-        LOG_DBG("LED turned off (GPIO)");
-    }
-#endif
-}
-#endif
-
-/* LED控制线程 */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-static void charging_status_led_thread(void *p1, void *p2, void *p3)
-{
-    const struct device *dev = (const struct device *)p1;
-    struct charging_status_data *data = dev->data;
-    
-    LOG_INF("Charging status LED thread started for instance %d", 
-            data->config->instance);
-    
-    while (1) {
-        /* 只有在充电状态且LED启用时才执行LED效果 */
-        if (atomic_get(&data->charging) && atomic_get(&data->led_enabled)) {
-#if CONFIG_CHARGING_STATUS_LED_USE_PWM
-            if (atomic_get(&data->breathe_active)) {
-                /* 计算当前时间在呼吸周期中的位置 */
-                uint32_t cycle_time = k_uptime_get_32() % data->breathe_period_ms;
-                
-                /* 计算当前亮度 */
-                uint32_t brightness = calculate_breathe_brightness(
-                    cycle_time, 
-                    data->breathe_period_ms, 
-                    data->max_brightness
-                );
-                
-                /* 设置LED亮度 */
-                set_led_brightness_pwm(dev, (uint8_t)brightness);
-                
-                LOG_DBG("Breathe cycle: %u ms, brightness: %u", 
-                        cycle_time, brightness);
-                
-                /* 等待下一步 */
-                k_msleep(data->breathe_step_ms);
-                continue;
-            }
-#endif
-        }
-        
-        /* 非充电状态或LED未启用时，休眠等待 */
-        k_msleep(100);
-    }
-}
-#endif
-
-/* LED初始化 */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-static void charging_status_led_init(const struct device *dev)
-{
-    struct charging_status_data *data = dev->data;
-    const struct charging_status_config *config = dev->config;
+    int samples[5];
+    int low_count = 0, high_count = 0;
     int ret;
     
-    LOG_INF("Initializing LED indicator for instance %d", config->instance);
-    
-    /* 初始化状态 */
-    atomic_set(&data->led_enabled, 0);
-    atomic_set(&data->led_active, 0);
-    atomic_set(&data->breathe_active, 0);
-    
-    /* 设置LED参数 */
-    data->breathe_period_ms = config->breathe_period_ms;
-    data->max_brightness = config->max_brightness;
-    data->breathe_step_ms = config->breathe_period_ms / 100;
-    data->blink_interval_ms = config->blink_interval_ms;
-    data->current_brightness = 0;
-    
-#if CONFIG_CHARGING_STATUS_LED_USE_PWM
-    /* PWM模式初始化 */
-    if (!device_is_ready(config->led_pwm.dev)) {
-        LOG_ERR("PWM device not ready for LED");
-        return;
+    for (int i = 0; i < 5; i++) {
+        /* 使用gpio_pin_get_raw获取原始电平 */
+        ret = gpio_pin_get_raw(gpio->port, gpio->pin);
+        if (ret < 0) {
+            return ret;  /* 读取错误 */
+        }
+        samples[i] = ret;
+        if (ret == 0) {
+            low_count++;
+        } else {
+            high_count++;
+        }
+        k_busy_wait(1000);  /* 等待1ms */
     }
     
-    LOG_INF("PWM LED initialized on %s, channel %d, period %d ns",
-            config->led_pwm.dev->name, config->led_pwm.channel, config->led_pwm.period);
+    /* 返回多数状态 */
+    *raw_level = (low_count > high_count) ? 0 : 1;
     
-    /* 初始关闭LED */
-    pwm_set_pulse_dt(&config->led_pwm, 0);
-#else
-    /* GPIO模式初始化 */
-    if (!gpio_is_ready_dt(&config->led_gpio)) {
-        LOG_ERR("LED GPIO device not ready");
-        return;
+    /* 如果是GPIO_ACTIVE_LOW，则逻辑电平与物理电平相反 */
+    if ((gpio->dt_flags & GPIO_ACTIVE_LOW) != 0) {
+        /* ACTIVE_LOW：物理低电平 = 逻辑高电平(1) */
+        return (*raw_level == 0) ? 1 : 0;
+    } else {
+        /* ACTIVE_HIGH：物理高电平 = 逻辑高电平(1) */
+        return *raw_level;
     }
-    
-    ret = gpio_pin_configure_dt(&config->led_gpio, GPIO_OUTPUT_INACTIVE);
-    if (ret < 0) {
-        LOG_ERR("Failed to configure LED GPIO: %d", ret);
-        return;
-    }
-    
-    /* 初始化闪烁定时器 */
-    k_timer_init(&data->led_timer, charging_status_led_timer_handler, NULL);
-    
-    LOG_INF("GPIO LED initialized on pin %s.%d",
-            config->led_gpio.port->name, config->led_gpio.pin);
-#endif
-    
-    /* 分配LED线程栈 */
-    data->led_thread_stack = k_thread_stack_alloc(CONFIG_CHARGING_STATUS_THREAD_STACK_SIZE, 0);
-    if (data->led_thread_stack == NULL) {
-        LOG_ERR("Failed to allocate LED thread stack");
-        return;
-    }
-    
-    /* 创建LED控制线程 */
-    k_thread_create(&data->led_thread,
-                   data->led_thread_stack,
-                   CONFIG_CHARGING_STATUS_THREAD_STACK_SIZE,
-                   charging_status_led_thread,
-                   (void *)dev, NULL, NULL,
-                   CONFIG_CHARGING_STATUS_THREAD_PRIORITY,
-                   0, K_NO_WAIT);
-    
-    char thread_name[24];
-    snprintf(thread_name, sizeof(thread_name), "chg_led_%d", config->instance);
-    k_thread_name_set(&data->led_thread, thread_name);
-    
-    LOG_INF("LED indicator initialized successfully for instance %d", config->instance);
 }
-#endif
 
 /* 防抖动工作处理器 */
 static void charging_status_debounce_work(struct k_work *work)
@@ -444,34 +174,44 @@ static void charging_status_debounce_work(struct k_work *work)
     struct charging_status_data *data = 
         CONTAINER_OF(dwork, struct charging_status_data, debounce_work);
     const struct charging_status_config *config = data->config;
-    int current_state;
+    int logical_state;
+    int raw_level;
     int ret;
     
     int64_t start_time = k_uptime_get();
     
     /* 读取稳定的GPIO状态 */
-    ret = read_stable_gpio_state(&config->chrg_gpio);
+    ret = read_stable_gpio_state(&config->chrg_gpio, &raw_level);
     if (ret < 0) {
         LOG_ERR("Failed to read stable GPIO state: %d", ret);
         return;
     }
     
-    current_state = ret;
+    logical_state = ret;
+    data->last_raw_gpio_level = raw_level;
     
-    /* TP4056 CHRG引脚: 充电时低电平，不充电时高电平 */
-    int new_charging_status = (current_state == 0);
+    /* TP4056 CHRG引脚: 
+     * - 充电时：物理低电平（84ms脉冲）
+     * - 充满/未充电时：物理高电平
+     * 
+     * 配置为GPIO_ACTIVE_LOW，所以：
+     * - 物理低电平 = 逻辑高电平(1) = 充电状态
+     * - 物理高电平 = 逻辑低电平(0) = 非充电状态
+     */
+    int new_charging_status = (logical_state == 1);  /* 逻辑高电平表示充电 */
     int old_charging_status = atomic_get(&data->charging);
     
-    LOG_DBG("Debounce work: stable pin state=%d, old_status=%s, new_status=%s",
-            current_state,
+    LOG_DBG("Debounce work: raw pin level=%d, logical state=%d, old_status=%s, new_status=%s",
+            raw_level,
+            logical_state,
             old_charging_status ? "CHARGING" : "NOT_CHARGING",
             new_charging_status ? "CHARGING" : "NOT_CHARGING");
     
     /* 检查状态是否稳定足够长时间 */
     int64_t current_time = k_uptime_get();
-    if (current_state != data->last_stable_state) {
+    if (logical_state != data->last_stable_state) {
         /* 状态变化，重置稳定计时 */
-        data->last_stable_state = current_state;
+        data->last_stable_state = logical_state;
         data->stable_since = current_time;
         LOG_DBG("State changed, resetting stable timer");
     } else if ((current_time - data->stable_since) < CONFIG_CHARGING_STATUS_MIN_STABLE_TIME_MS) {
@@ -497,32 +237,24 @@ static void charging_status_debounce_work(struct k_work *work)
         
         int64_t processing_time = k_uptime_get() - start_time;
         
-        LOG_INF("CHARGING STATUS CHANGED: %s -> %s (processing: %lldms, changes: %ld, interrupts: %ld)",
+        LOG_INF("CHARGING STATUS CHANGED: %s -> %s (raw level: %d, logical: %d, processing: %lldms, changes: %ld, interrupts: %ld)",
                 old_charging_status ? "CHARGING" : "NOT_CHARGING",
                 new_charging_status ? "CHARGING" : "NOT_CHARGING",
+                raw_level,
+                logical_state,
                 processing_time,
                 (long)atomic_get(&data->change_count),
                 (long)atomic_get(&data->interrupt_count));
-        
-        /* 根据充电状态更新LED */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-        if (new_charging_status) {
-            update_led_state(data->dev, true);
-            LOG_INF("LED enabled (charging)");
-        } else {
-            update_led_state(data->dev, false);
-            LOG_INF("LED disabled (not charging)");
-        }
-#endif
         
         /* 如果注册了用户回调，则通知 */
         if (data->user_callback) {
             data->user_callback(new_charging_status, data->user_callback_data);
         }
     } else {
-        LOG_DBG("Status unchanged: %s (stable pin state: %d)", 
+        LOG_DBG("Status unchanged: %s (raw pin level: %d, logical state: %d)", 
                 new_charging_status ? "CHARGING" : "NOT_CHARGING",
-                current_state);
+                raw_level,
+                logical_state);
     }
 }
 
@@ -605,6 +337,40 @@ static int charging_status_get_stats(const struct device *dev,
     return 0;
 }
 
+/* 驱动API: 获取当前GPIO状态（用于调试） */
+static int charging_status_get_gpio_state(const struct device *dev, 
+                                        int *raw_level,
+                                        int *logical_level)
+{
+    const struct charging_status_data *data = dev->data;
+    const struct charging_status_config *config = dev->config;
+    int ret;
+    
+    if (raw_level || logical_level) {
+        int raw, logical;
+        
+        /* 读取当前GPIO状态 */
+        ret = read_stable_gpio_state(&config->chrg_gpio, &raw);
+        if (ret < 0) {
+            return ret;
+        }
+        
+        logical = ret;
+        
+        if (raw_level) {
+            *raw_level = raw;
+        }
+        
+        if (logical_level) {
+            *logical_level = logical;
+        }
+        
+        LOG_DBG("GPIO state query: raw=%d, logical=%d", raw, logical);
+    }
+    
+    return 0;
+}
+
 /* 驱动API: 注册状态变化回调 */
 static int charging_status_register_callback(const struct device *dev,
                                            void (*callback)(bool, void*),
@@ -638,67 +404,8 @@ static int charging_status_get_last_change(const struct device *dev,
     return 0;
 }
 
-/* 驱动API: LED控制功能 */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-static int charging_status_led_set(const struct device *dev, bool enable)
-{
-    struct charging_status_data *data = dev->data;
-    
-    if (!atomic_get(&data->charging)) {
-        LOG_WRN("Cannot manually control LED when not charging");
-        return -EACCES;
-    }
-    
-    update_led_state(dev, enable);
-    return 0;
-}
-
-static int charging_status_led_get_state(const struct device *dev, bool *is_active)
-{
-    struct charging_status_data *data = dev->data;
-    
-    if (is_active == NULL) {
-        return -EINVAL;
-    }
-    
-    *is_active = (atomic_get(&data->led_enabled) != 0);
-    return 0;
-}
-
-static int charging_status_led_set_params(const struct device *dev,
-                                        uint32_t period_ms,
-                                        uint8_t max_brightness,
-                                        uint32_t blink_interval_ms)
-{
-    struct charging_status_data *data = dev->data;
-    
-    if (period_ms < 100 || period_ms > 10000) {
-        return -EINVAL;
-    }
-    
-    if (max_brightness > 255) {
-        return -EINVAL;
-    }
-    
-    if (blink_interval_ms < 100 || blink_interval_ms > 5000) {
-        return -EINVAL;
-    }
-    
-    data->breathe_period_ms = period_ms;
-    data->max_brightness = max_brightness;
-    data->blink_interval_ms = blink_interval_ms;
-    data->breathe_step_ms = period_ms / 100;
-    
-    LOG_INF("LED params updated: period=%u ms, brightness=%u, blink=%u ms",
-            period_ms, max_brightness, blink_interval_ms);
-    
-    return 0;
-}
-#endif
-
 /* 驱动API结构 */
 struct charging_status_driver_api {
-    /* 充电状态相关API */
     int (*get_status)(const struct device *dev, bool *is_charging);
     int (*register_callback)(const struct device *dev,
                            void (*callback)(bool, void*),
@@ -709,16 +416,9 @@ struct charging_status_driver_api {
                     uint32_t *change_count,
                     uint32_t *interrupt_count,
                     bool *hardware_fault);
-    
-    /* LED控制API */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-    int (*led_set)(const struct device *dev, bool enable);
-    int (*led_get_state)(const struct device *dev, bool *is_active);
-    int (*led_set_params)(const struct device *dev,
-                         uint32_t period_ms,
-                         uint8_t max_brightness,
-                         uint32_t blink_interval_ms);
-#endif
+    int (*get_gpio_state)(const struct device *dev,
+                         int *raw_level,
+                         int *logical_level);
 };
 
 /* 驱动API实例 */
@@ -727,11 +427,7 @@ static const struct charging_status_driver_api charging_status_api = {
     .register_callback = charging_status_register_callback,
     .get_last_change = charging_status_get_last_change,
     .get_stats = charging_status_get_stats,
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-    .led_set = charging_status_led_set,
-    .led_get_state = charging_status_led_get_state,
-    .led_set_params = charging_status_led_set_params,
-#endif
+    .get_gpio_state = charging_status_get_gpio_state,
 };
 
 /* 驱动初始化 */
@@ -740,13 +436,17 @@ static int charging_status_init(const struct device *dev)
     struct charging_status_data *data = dev->data;
     const struct charging_status_config *config = dev->config;
     int ret;
+    int raw_level;
     
     /* 存储设备指针 */
     data->dev = dev;
     data->config = config;
     
-    /* 先打印简单初始化消息 */
-    LOG_INF("Initializing charging status driver instance %d", config->instance);
+    LOG_INF("Initializing charging status driver for instance %d on pin %s.%d (flags: 0x%x)",
+            config->instance,
+            config->chrg_gpio.port->name, 
+            config->chrg_gpio.pin,
+            config->chrg_gpio.dt_flags);
     
     /* 验证GPIO设备是否就绪 */
     if (!gpio_is_ready_dt(&config->chrg_gpio)) {
@@ -765,7 +465,9 @@ static int charging_status_init(const struct device *dev)
         return ret;
     }
     
-    LOG_DBG("GPIO configured as input for instance %d", config->instance);
+    LOG_DBG("GPIO configured as input for instance %d (ACTIVE_%s)", 
+            config->instance,
+            (config->chrg_gpio.dt_flags & GPIO_ACTIVE_LOW) ? "LOW" : "HIGH");
     
     /* 初始化GPIO回调 */
     gpio_init_callback(&data->chrg_cb, charging_status_gpio_callback,
@@ -798,23 +500,29 @@ static int charging_status_init(const struct device *dev)
     k_work_init_delayable(&data->debounce_work, charging_status_debounce_work);
     
     /* 初始状态读取 - 使用稳定读取 */
-    int initial_state = read_stable_gpio_state(&config->chrg_gpio);
-    if (initial_state < 0) {
+    int logical_state = read_stable_gpio_state(&config->chrg_gpio, &raw_level);
+    if (logical_state < 0) {
         LOG_ERR("Failed to read initial GPIO state for instance %d: %d", 
-                config->instance, initial_state);
-        initial_state = 1; /* 默认假设不充电 */
+                config->instance, logical_state);
+        logical_state = 0; /* 默认假设不充电（逻辑低电平） */
+        raw_level = 1;     /* 默认假设物理高电平 */
     }
     
+    data->last_raw_gpio_level = raw_level;
+    
     /* 设置初始状态 */
-    atomic_set(&data->charging, (initial_state == 0));
-    data->last_stable_state = initial_state;
+    /* 逻辑高电平(1)表示充电，逻辑低电平(0)表示不充电 */
+    int initial_charging_status = (logical_state == 1);
+    atomic_set(&data->charging, initial_charging_status);
+    data->last_stable_state = logical_state;
     data->stable_since = k_uptime_get();
     data->last_change_time = k_uptime_get();
     
-    LOG_INF("INITIAL STATUS: %s (GPIO pin %s.%d state: %d, instance: %d)",
-            (initial_state == 0) ? "CHARGING" : "NOT_CHARGING",
+    LOG_INF("INITIAL STATUS: %s (GPIO pin %s.%d: raw level=%d, logical=%d, instance: %d)",
+            initial_charging_status ? "CHARGING" : "NOT_CHARGING",
             config->chrg_gpio.port->name, config->chrg_gpio.pin,
-            initial_state, config->instance);
+            raw_level, logical_state,
+            config->instance);
     
     /* 分配线程栈 */
     data->thread_stack = k_thread_stack_alloc(CONFIG_CHARGING_STATUS_THREAD_STACK_SIZE, 0);
@@ -841,11 +549,6 @@ static int charging_status_init(const struct device *dev)
     LOG_INF("Charging status driver initialized successfully for instance %d", 
             config->instance);
     
-    /* 初始化LED指示功能 */
-#if CONFIG_CHARGING_STATUS_LED_ENABLE
-    charging_status_led_init(dev);
-#endif
-    
     /* 立即执行一次初始状态检查 */
     k_work_schedule(&data->debounce_work, K_MSEC(10));
     
@@ -863,6 +566,7 @@ static int charging_status_init(const struct device *dev)
         .last_interrupt_time = 0,                                             \
         .last_stable_state = -1,                                              \
         .stable_since = 0,                                                    \
+        .last_raw_gpio_level = -1,                                            \
         .user_callback = NULL,                                                \
         .user_callback_data = NULL,                                           \
     };                                                                        \
@@ -871,20 +575,6 @@ static int charging_status_init(const struct device *dev)
         .chrg_gpio = GPIO_DT_SPEC_INST_GET(n, chrg_gpios),                   \
         .status_interval_ms = DT_INST_PROP_OR(n, status_interval_ms, 1000),  \
         .instance = n,                                                        \
-        COND_CODE_1(CONFIG_CHARGING_STATUS_LED_ENABLE,                        \
-            (                                                                 \
-                COND_CODE_1(CONFIG_CHARGING_STATUS_LED_USE_PWM,               \
-                    (.led_pwm = PWM_DT_SPEC_INST_GET_BY_IDX(n, 0),),          \
-                    (.led_gpio = GPIO_DT_SPEC_GET_BY_IDX(DT_DRV_INST(n), led_gpios, 0),) \
-                ),                                                            \
-                .breathe_period_ms = DT_INST_PROP_OR(n, breathe_period_ms,    \
-                    CONFIG_CHARGING_STATUS_LED_BREATHE_PERIOD_MS),            \
-                .blink_interval_ms = DT_INST_PROP_OR(n, blink_interval_ms, 500), \
-                .max_brightness = DT_INST_PROP_OR(n, max_brightness,          \
-                    CONFIG_CHARGING_STATUS_LED_MAX_BRIGHTNESS),               \
-            ),                                                                \
-            ()                                                                \
-        )                                                                     \
     };                                                                        \
                                                                               \
     DEVICE_DT_INST_DEFINE(n,                                                  \
