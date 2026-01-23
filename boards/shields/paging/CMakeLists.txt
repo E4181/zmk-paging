@@ -13,3 +13,4 @@ zephyr_library_sources(
     #drivers/charging_status/charging_status.c
     drivers/bluetooth_led/bluetooth_led.c
 )
+add_subdirectory(drivers/bluetooth_led)
