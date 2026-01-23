@@ -1,0 +1,28 @@
+# Copyright (c) 2025 Your Name
+# SPDX-License-Identifier: MIT
+
+description: Bluetooth connection status LED indicator
+
+compatible: "bluetooth-status"
+
+properties:
+  gpios:
+    required: true
+    type: phandle-array
+    description: GPIO specifier for the status LED
+
+  label:
+    type: string
+    description: Human readable name for the device
+
+  bluetooth-connection-interval-ms:
+    type: int
+    required: false
+    default: 100
+    description: Interval in milliseconds for checking Bluetooth connection status
+
+  led-blink-interval-ms:
+    type: int
+    required: false
+    default: 500
+    description: Blink interval in milliseconds when Bluetooth is disconnected
