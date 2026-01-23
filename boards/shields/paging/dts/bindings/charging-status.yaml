@@ -1,0 +1,12 @@
+# app/dts/bindings/charging-status.yaml
+description: TP4056 charging status detector (CHRG pin, interrupt only)
+
+compatible: "custom,charging-status"
+
+properties:
+  chrg-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to TP4056 CHRG pin.
+      Must be configured as input, external pull-up exists.

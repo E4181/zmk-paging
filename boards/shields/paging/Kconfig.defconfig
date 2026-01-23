@@ -41,3 +41,10 @@ choice LV_COLOR_DEPTH
 endchoice
 
 endif # LVGL
+
+config CHARGING_STATUS
+    bool "TP4056 charging status driver"
+    default y
+    depends on GPIO
+    help
+      Enable interrupt-based TP4056 CHRG pin charging status detection.

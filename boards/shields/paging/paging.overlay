@@ -77,12 +77,9 @@
     //    };
     //};
     
-    charging_status {
-        compatible = "zmk,charging-status";
-        status = "okay";
-
-        chrg-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
-        led-gpios  = <&gpio0 15 GPIO_ACTIVE_HIGH>;
+    charging_status: charging_status {
+        compatible = "custom,charging-status";
+        chrg-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
     };
 
 };
