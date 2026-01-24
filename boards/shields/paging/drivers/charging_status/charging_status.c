@@ -88,33 +88,63 @@ static void charge_gpio_isr(const struct device *port,
     const struct device *dev = DEVICE_DT_INST_GET(0);
     const struct charging_status_config *cfg = dev->config;
 
-    // 获取逻辑电平：gpio_pin_get_dt() 已经考虑了 GPIO_ACTIVE_LOW 标志
-    // 对于 GPIO_ACTIVE_LOW: 物理低电平 → 逻辑高电平(1)
-    // 对于 GPIO_ACTIVE_HIGH: 物理高电平 → 逻辑高电平(1)
+    // 获取逻辑电平
     int pin_state = gpio_pin_get_dt(&cfg->charge_gpio);
-    
-    // 调试信息：获取原始电平和逻辑电平
-    #ifdef CONFIG_DEBUG
-    int raw_state = gpio_pin_get_raw(cfg->charge_gpio.port, cfg->charge_gpio.pin);
-    LOG_DBG("GPIO: raw=%d, logical=%d, flags=0x%x", 
-            raw_state, pin_state, cfg->charge_gpio.dt_flags);
-    #endif
     
     // 逻辑电平为 1 表示充电（对于 GPIO_ACTIVE_LOW 就是物理低电平）
     bool is_charging = (pin_state > 0);
 
-    if (is_charging && !data->active) {
-        data->active = true;
-        data->step = 0;
-        k_work_schedule(&data->breath_work, K_NO_WAIT);
-        LOG_INF("Charging detected (logic high), breath LED started");
-    } else if (!is_charging && data->active) {
-        data->active = false;
-        k_work_cancel_delayable(&data->breath_work);
-        pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, 0);
-        LOG_INF("Charging stopped (logic low), breath LED off");
+    // 不直接在中断中调度工作，只更新状态
+    if (is_charging) {
+        if (!data->active) {
+            data->active = true;
+            data->step = 0;
+            LOG_INF("Charging detected, will start breath LED");
+        }
     } else {
-        LOG_DBG("GPIO logical state: %d, active=%d", pin_state, data->active);
+        if (data->active) {
+            data->active = false;
+            LOG_INF("Charging stopped, will stop breath LED");
+        }
+    }
+}
+
+/* ===================== 呼吸灯 Handler ===================== */
+static void breath_work_handler(struct k_work *work)
+{
+    struct k_work_delayable *dwork =
+        CONTAINER_OF(work, struct k_work_delayable, work);
+
+    struct charging_status_data *data =
+        CONTAINER_OF(dwork, struct charging_status_data, breath_work);
+
+    const struct device *dev = DEVICE_DT_INST_GET(0);
+    const struct charging_status_config *cfg = dev->config;
+
+    // 首先读取当前GPIO状态，确保状态同步
+    int pin_state = gpio_pin_get_dt(&cfg->charge_gpio);
+    bool is_charging = (pin_state > 0);
+    
+    // 如果状态不一致，更新状态
+    if (is_charging != data->active) {
+        LOG_DBG("State mismatch: GPIO=%d, active=%d, updating...", 
+                pin_state, data->active);
+        data->active = is_charging;
+        if (is_charging) {
+            data->step = 0;
+        }
+    }
+
+    if (!data->active) {
+        pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, 0);
+        LOG_DBG("Breath LED off");
+    } else {
+        pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, breath_lut[data->step]);
+        data->step = (data->step + 1) % BREATH_STEPS;
+        LOG_DBG("Breath LED step: %d", data->step);
+        
+        // 只有充电时才继续调度
+        k_work_schedule(&data->breath_work, K_MSEC(BREATH_PERIOD_MS));
     }
 }
 
@@ -141,9 +171,9 @@ static int charging_status_init(const struct device *dev)
         return ret;
     }
 
-    /* 配置中断 - 改为电平触发确保稳定 */
+    /* 恢复为边沿触发中断 - 避免中断风暴 */
     ret = gpio_pin_interrupt_configure_dt(&cfg->charge_gpio,
-                                          GPIO_INT_LEVEL_ACTIVE | GPIO_INT_LEVEL_INACTIVE);
+                                          GPIO_INT_EDGE_BOTH);
     if (ret < 0) {
         LOG_ERR("Failed to configure interrupt: %d", ret);
         return ret;
@@ -165,20 +195,11 @@ static int charging_status_init(const struct device *dev)
     data->active = false;
     data->step = 0;
 
-    /* 初始化时读取一次状态并设置呼吸灯 */
-    int pin_state = gpio_pin_get_dt(&cfg->charge_gpio);
-    LOG_INF("Initial GPIO logical state: %d (0=not charging, 1=charging)", pin_state);
+    /* 关闭PWM输出，确保初始状态为关闭 */
+    pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, 0);
     
-    bool is_charging = (pin_state > 0);
-    if (is_charging) {
-        data->active = true;
-        data->step = 0;
-        k_work_schedule(&data->breath_work, K_NO_WAIT);
-        LOG_INF("Initial charging state: ON");
-    } else {
-        pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, 0);
-        LOG_INF("Initial charging state: OFF");
-    }
+    /* 延迟初始状态读取，避免在系统初始化关键期执行 */
+    k_work_schedule(&data->breath_work, K_MSEC(100));
 
     LOG_INF("Charging status driver initialized");
 
