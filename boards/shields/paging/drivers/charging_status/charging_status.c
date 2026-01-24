@@ -39,6 +39,7 @@ struct charging_status_data {
     struct gpio_callback gpio_cb;
     uint8_t step;
     bool active;
+    bool work_scheduled;
 };
 
 /* ===================== 呼吸灯 Handler ===================== */
@@ -68,15 +69,31 @@ static void breath_work_handler(struct k_work *work)
     }
 
     if (!data->active) {
+        // 关闭PWM
         pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, 0);
+        data->work_scheduled = false;
         LOG_DBG("Breath LED off");
+        return;
     } else {
-        pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, breath_lut[data->step]);
+        // 设置呼吸灯效果
+        int ret = pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, breath_lut[data->step]);
+        if (ret < 0) {
+            LOG_WRN("Failed to set PWM: %d", ret);
+            data->active = false;
+            return;
+        }
+        
+        // 更新步进
         data->step = (data->step + 1) % BREATH_STEPS;
         LOG_DBG("Breath LED step: %d", data->step);
         
-        // 只有充电时才继续调度
-        k_work_schedule(&data->breath_work, K_MSEC(BREATH_PERIOD_MS));
+        // 只有在充电状态时才继续调度
+        if (data->active) {
+            data->work_scheduled = true;
+            k_work_schedule(&data->breath_work, K_MSEC(BREATH_PERIOD_MS));
+        } else {
+            data->work_scheduled = false;
+        }
     }
 }
 
@@ -96,19 +113,26 @@ static void charge_gpio_isr(const struct device *port,
     
     // 逻辑电平为 1 表示充电（对于 GPIO_ACTIVE_LOW 就是物理低电平）
     bool is_charging = (pin_state > 0);
+    
+    LOG_DBG("GPIO ISR: pin_state=%d, active=%d", pin_state, data->active);
 
-    // 不直接在中断中调度工作，只更新状态
-    // 工作队列会定期检查状态并更新
     if (is_charging) {
         if (!data->active) {
             data->active = true;
             data->step = 0;
-            LOG_INF("Charging detected");
+            data->work_scheduled = true;
+            k_work_schedule(&data->breath_work, K_NO_WAIT);
+            LOG_INF("Charging detected, starting breath LED");
         }
     } else {
         if (data->active) {
             data->active = false;
-            LOG_INF("Charging stopped");
+            // 取消未执行的工作
+            k_work_cancel_delayable(&data->breath_work);
+            // 立即关闭PWM
+            pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, 0);
+            data->work_scheduled = false;
+            LOG_INF("Charging stopped, turning off LED");
         }
     }
 }
@@ -148,7 +172,8 @@ static int charging_status_init(const struct device *dev)
                        charge_gpio_isr,
                        BIT(cfg->charge_gpio.pin));
     
-    ret = gpiao_add_callback(cfg->charge_gpio.port, &data->gpio_cb);
+    /* 修复拼写错误：gpiao_add_callback -> gpio_add_callback */
+    ret = gpio_add_callback(cfg->charge_gpio.port, &data->gpio_cb);
     if (ret < 0) {
         LOG_ERR("Failed to add callback: %d", ret);
         return ret;
@@ -159,12 +184,13 @@ static int charging_status_init(const struct device *dev)
 
     data->active = false;
     data->step = 0;
+    data->work_scheduled = false;
 
     /* 确保PWM初始状态为关闭 */
     pwm_set_dt(&cfg->pwm, PWM_PERIOD_USEC, 0);
     
     /* 延迟启动工作队列，避免在系统初始化关键期执行 */
-    k_work_schedule(&data->breath_work, K_MSEC(100));
+    k_work_schedule(&data->breath_work, K_MSEC(500));
 
     LOG_INF("Charging status driver initialized");
 
