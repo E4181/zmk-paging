@@ -172,7 +172,6 @@ static int charging_status_init(const struct device *dev)
                        charge_gpio_isr,
                        BIT(cfg->charge_gpio.pin));
     
-    /* 修复拼写错误：gpiao_add_callback -> gpio_add_callback */
     ret = gpio_add_callback(cfg->charge_gpio.port, &data->gpio_cb);
     if (ret < 0) {
         LOG_ERR("Failed to add callback: %d", ret);
