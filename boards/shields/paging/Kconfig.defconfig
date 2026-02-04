@@ -41,35 +41,3 @@ choice LV_COLOR_DEPTH
 endchoice
 
 endif # LVGL
-
-
-config ZMK_LAYER_INDICATOR
-    bool "Enable layer indicator driver"
-    default y
-    help
-      Enables the layer indicator driver for monitoring layer state changes.
-      
-config ZMK_LAYER_INDICATOR_MAX_EVENTS
-    int "Maximum number of layer events to queue"
-    default 20
-    depends on ZMK_LAYER_INDICATOR
-    help
-      Maximum number of layer state change events that can be queued for processing.
-      
-config ZMK_LAYER_INDICATOR_LOG_ALL_TRANSITIONS
-    bool "Log all layer transitions"
-    default n
-    depends on ZMK_LAYER_INDICATOR
-    help
-      When enabled, logs every layer state change event. When disabled, only logs when
-      the total number of active layers changes.
-
-
-config ZMK_LAYER_CHANGE
-    bool "Enable layer change LED indicator"
-    default y
-    depends on ZMK_LAYER_INDICATOR && GPIO
-    help
-      Enables LED indication when specific layer count is reached.
-      This driver blinks an LED when the active layer count matches
-      a configured target layer.
