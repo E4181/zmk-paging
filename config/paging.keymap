@@ -28,25 +28,18 @@
         bindings = <&rgb_ug RGB_SAI>, <&rgb_ug RGB_SAD>;
     };
 
-    scroll_encoder: scroll_encoder {
-        compatible = "zmk,behavior-sensor-rotate";
-        #sensor-binding-cells = <0>;
-        bindings = <&msc SCRL_DOWN>, <&msc SCRL_UP>;
-
-        tap-ms = <100>;
-    };
-
-    tiktok_encoder: tiktok_encoder {
-        compatible = "zmk,behavior-sensor-rotate";
-        #sensor-binding-cells = <0>;
-        bindings = <&kp C_NEXT>, <&kp C_PREV>;
-    };
-
-    redbook_encoder: redbook_encoder {
-        compatible = "zmk,behavior-sensor-rotate";
-        #sensor-binding-cells = <0>;
-         bindings = <&kp UP_ARROW>, <&kp DOWN_ARROW>;
-    };
+        macros {
+            alt_w_f: alt_w_f {
+                compatible = "zmk,behavior-macro";
+                #binding-cells = <0>;
+                wait-ms = <30>;
+                tap-ms = <30>;
+                bindings
+                    = <&macro_press &kp LALT &kp W>  // 同时压下 Alt 和 W
+                    , <&macro_tap &kp F>            // 点击 F
+                    , <&macro_release &kp LALT &kp W>; // 释放 Alt 和 W
+            };
+        };
     
     keymap0: keymap {
         compatible = "zmk,keymap";
@@ -54,27 +47,27 @@
         default_layer {
             display-name = "default";
             bindings = <
-                &mkp LCLK              &kp LEFT_ARROW
-                &kp C_AC_HOME  &to 1   &kp RIGHT_ARROW 
-                &kp C_AC_BACK  &to 7   &kp LEFT_ARROW
-                &kp C_AC_FORWARD       &kp RIGHT_ARROW         
+                &kp LG(D)              &kp F11
+                &kp C_AC_HOME  &to 1   &kp F5 
+                &kp C_AC_BACK  &to 7   &alt_w_f
+                &kp C_AC_FORWARD       &kp ESC        
             >; 
-            sensor-bindings = <&inc_dec_kp LEFT_ARROW RIGHT_ARROW>;
+            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
 
         viedo1_layer {
-            display-name = "tiktok";       
+            display-name = "music";       
             bindings = <
-                &mkp LCLK              &mmv MOVE_UP
-                &to 0          &to 2   &mmv MOVE_DOWN   
-                &kp C_AC_BACK  &to 0   &mmv MOVE_LEFT
-                &kp C_AC_HOME          &mmv MOVE_RIGHT      
+                &kp C_MUTE             &kp C_PREV
+                &to 0          &to 2   &kp C_NEXT  
+                &kp C_AC_BACK  &to 0   &kp C_PP
+                &kp C_AC_HOME          &kp C_PP   
             >;
-            sensor-bindings = <&scroll_encoder>;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
 
         tri_layer {
-            display-name = "fn";
+            display-name = "mouse";
             bindings = <
                 &mkp LCLK              &mmv MOVE_UP
                 &to 0          &to 3   &mmv MOVE_DOWN  
@@ -86,62 +79,62 @@
         };
 
         video2_layer {
-            display-name = "left&right";       
+            display-name = "system";       
             bindings = <
-                &kp C_MUTE         &msc SCRL_UP
-                &to 0      &to 4   &msc SCRL_DOWN 
-                &trans     &to 2   &kp C_VOL_UP
-                &trans             &kp C_VOL_DN     
+                &kp LG(D)          &kp F9
+                &to 0      &to 4   &kp F10
+                &trans     &to 2   &kp C_BRI_UP
+                &trans             &kp C_BRI_DN     
             >;
-            sensor-bindings = <&inc_dec_kp LEFT_ARROW RIGHT_ARROW>;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
 
         extraone_layer {
-            display-name = "up&down";
+            display-name = "bluetooth";
             bindings = <
-                &mkp LCLK         &trans
-                &to 0     &to 5   &trans
-                &trans    &to 3   &trans
-                &trans            &trans
+                &trans            &bt BT_NXT
+                &to 0     &to 5   &bt BT_PRV 
+                &trans    &to 3   &bt BT_CLR
+                &bootloader       &trans
             >;
             sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
 
         extratwo_layer {
-            display-name = "mouse";
-            bindings = <
-                &mkp LCLK         &mmv MOVE_UP
-                &to 0     &to 6   &mmv MOVE_DOWN 
-                &trans    &to 4   &mmv MOVE_LEFT
-                &trans            &mmv MOVE_RIGHT 
-            >;
-            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
-        };
-
-        extrathree_layer {
             display-name = "rgbmode";
             bindings = <
                 &rgb_ug RGB_TOG          &rgb_ug RGB_EFR
-                &to 0            &to 7   &trans
-                &rgb_ug RGB_BRI  &to 5   &rgb_ug RGB_SAI
-                &rgb_ug RGB_BRD          &rgb_ug RGB_SAD  
+                &to 0            &to 6   &trans
+                &rgb_ug RGB_BRI  &to 4   &rgb_ug RGB_SAI
+                &rgb_ug RGB_BRD          &rgb_ug RGB_SAD 
             >;
             sensor-bindings = <&rgb_hue_encoder>;
         };
 
-        extrafour_layer {
-            display-name = "bluetooth";
+        extrathree_layer {
+            display-name = "extra1";
             bindings = <
-                &trans          &bt BT_NXT
-                &to 0   &to 8   &bt BT_PRV 
-                &trans  &to 6   &bt BT_CLR
+                &trans          &trans
+                &to 0   &to 7   &trans
+                &trans  &to 5   &trans
+                &trans          &trans
+            >;
+            sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
+        };
+
+        extrafour_layer {
+            display-name = "extra2";
+            bindings = <
+                &trans          &trans
+                &to 0   &to 8   &trans
+                &trans  &to 6   &trans
                 &trans          &trans
             >;
             sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
 
         extrafive_layer {
-            display-name = "extraone";
+            display-name = "extra3";
             bindings = <
                 &trans          &trans
                 &to 0   &to 9   &trans 
@@ -152,12 +145,12 @@
         };
 
         extrasix_layer {
-            display-name = "extratwo";
+            display-name = "extra4";
             bindings = <
                 &trans          &trans
                 &to 0   &to 0   &trans 
                 &trans  &to 8   &trans
-                &trans          &bootloader
+                &trans          &trans
             >;
             sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
