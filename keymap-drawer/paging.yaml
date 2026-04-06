@@ -1,112 +1,112 @@
 layout: {zmk_keyboard: paging}
 layers:
   default:
-  - '&mkp LCLK'
-  - LEFT ARROW
+  - Gui+D
+  - F11
   - AC HOME
-  - {t: tiktok, h: toggle}
-  - RIGHT ARROW
+  - {t: music, h: toggle}
+  - F5
   - AC BACK
-  - {t: bluetooth, h: toggle}
-  - LEFT ARROW
+  - {t: extra2, h: toggle}
+  - '&alt_w_f'
   - AC FORWARD
-  - RIGHT ARROW
-  tiktok:
-  - '&mkp LCLK'
-  - '&mmv MOVE_UP'
-  - {t: default, h: toggle}
-  - {t: fn, h: toggle}
-  - '&mmv MOVE_DOWN'
-  - AC BACK
-  - {t: default, h: toggle}
-  - '&mmv MOVE_LEFT'
-  - AC HOME
-  - '&mmv MOVE_RIGHT'
-  fn:
-  - '&mkp LCLK'
-  - '&mmv MOVE_UP'
-  - {t: default, h: toggle}
-  - {t: left&right, h: toggle}
-  - '&mmv MOVE_DOWN'
-  - AC BACK
-  - {t: tiktok, h: toggle}
-  - '&mmv MOVE_LEFT'
-  - AC HOME
-  - '&mmv MOVE_RIGHT'
-  left&right:
+  - ESC
+  music:
   - MUTE
-  - '&msc SCRL_UP'
-  - {t: default, h: toggle}
-  - {t: up&down, h: toggle}
-  - '&msc SCRL_DOWN'
-  - {t: ▽, type: trans}
-  - {t: fn, h: toggle}
-  - VOL UP
-  - {t: ▽, type: trans}
-  - VOL DN
-  up&down:
-  - '&mkp LCLK'
-  - {t: ▽, type: trans}
+  - PREV
   - {t: default, h: toggle}
   - {t: mouse, h: toggle}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: left&right, h: toggle}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
+  - NEXT
+  - AC BACK
+  - {t: default, h: toggle}
+  - PP
+  - AC HOME
+  - PP
   mouse:
   - '&mkp LCLK'
   - '&mmv MOVE_UP'
   - {t: default, h: toggle}
-  - {t: rgbmode, h: toggle}
+  - {t: system, h: toggle}
   - '&mmv MOVE_DOWN'
-  - {t: ▽, type: trans}
-  - {t: up&down, h: toggle}
+  - AC BACK
+  - {t: music, h: toggle}
   - '&mmv MOVE_LEFT'
-  - {t: ▽, type: trans}
+  - AC HOME
   - '&mmv MOVE_RIGHT'
-  rgbmode:
-  - RGB TOG
-  - RGB EFR
+  system:
+  - Gui+D
+  - F9
   - {t: default, h: toggle}
   - {t: bluetooth, h: toggle}
+  - F10
   - {t: ▽, type: trans}
-  - RGB BRI
   - {t: mouse, h: toggle}
-  - RGB SAI
-  - RGB BRD
-  - RGB SAD
+  - BRI UP
+  - {t: ▽, type: trans}
+  - BRI DN
   bluetooth:
   - {t: ▽, type: trans}
   - BT NXT
   - {t: default, h: toggle}
-  - {t: extraone, h: toggle}
+  - {t: rgbmode, h: toggle}
   - BT PRV
   - {t: ▽, type: trans}
-  - {t: rgbmode, h: toggle}
+  - {t: system, h: toggle}
   - BT CLR
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  extraone:
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: default, h: toggle}
-  - {t: extratwo, h: toggle}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: bluetooth, h: toggle}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  extratwo:
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: default, h: toggle}
-  - {t: default, h: toggle}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
-  - {t: extraone, h: toggle}
-  - {t: ▽, type: trans}
-  - {t: ▽, type: trans}
   - '&bootloader'
+  - {t: ▽, type: trans}
+  rgbmode:
+  - RGB TOG
+  - RGB EFR
+  - {t: default, h: toggle}
+  - {t: extra1, h: toggle}
+  - {t: ▽, type: trans}
+  - RGB BRI
+  - {t: bluetooth, h: toggle}
+  - RGB SAI
+  - RGB BRD
+  - RGB SAD
+  extra1:
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: default, h: toggle}
+  - {t: extra2, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: rgbmode, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  extra2:
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: default, h: toggle}
+  - {t: extra3, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: extra1, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  extra3:
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: default, h: toggle}
+  - {t: extra4, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: extra2, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  extra4:
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: default, h: toggle}
+  - {t: default, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: extra3, h: toggle}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
+  - {t: ▽, type: trans}
