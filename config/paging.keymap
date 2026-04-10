@@ -49,7 +49,7 @@
             bindings = <
                 &kp LG(D)              &kp F11
                 &kp C_AC_HOME  &to 1   &kp F5 
-                &kp C_AC_BACK  &to 7   &alt_w_f
+                &kp C_AC_BACK  &to 4   &alt_w_f
                 &kp C_AC_FORWARD       &kp ESC        
             >; 
             sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
