@@ -7,7 +7,7 @@ layers:
   - {t: music, h: toggle}
   - F5
   - AC BACK
-  - {t: extra2, h: toggle}
+  - {t: bluetooth, h: toggle}
   - '&alt_w_f'
   - AC FORWARD
   - ESC
