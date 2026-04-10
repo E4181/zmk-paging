@@ -67,7 +67,7 @@
     sensors: sensors {
         compatible = "zmk,keymap-sensors";
         sensors = <&encoder>;
-        triggers-per-rotation = <0>;
+        triggers-per-rotation = <20>;
     };
 
     backlight: pwmleds {
