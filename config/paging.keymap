@@ -47,10 +47,10 @@
         default_layer {
             display-name = "default";
             bindings = <
-                &kp ESC             &kp LG(D)
-                &kp C_PREV  &to 1   &kp C_VOL_UP
-                &kp C_PP    &to 4   &kp C_VOL_DN
-                &kp C_NEXT          &kp LG(L)        
+                &kp LG(D)              &kp F11
+                &kp C_AC_HOME  &to 1   &kp F5 
+                &kp C_AC_BACK  &to 4   &alt_w_f
+                &kp C_AC_FORWARD       &kp ESC        
             >; 
             sensor-bindings = <&inc_dec_kp UP_ARROW DOWN_ARROW>;
         };
