@@ -1,16 +1,16 @@
 layout: {zmk_keyboard: paging}
 layers:
   default:
-  - Gui+D
-  - F11
-  - AC HOME
-  - {t: music, h: toggle}
-  - F5
-  - AC BACK
-  - {t: bluetooth, h: toggle}
-  - '&alt_w_f'
-  - AC FORWARD
   - ESC
+  - Gui+D
+  - PREV
+  - {t: music, h: toggle}
+  - VOL UP
+  - PP
+  - {t: bluetooth, h: toggle}
+  - VOL DN
+  - NEXT
+  - Gui+L
   music:
   - MUTE
   - PREV
